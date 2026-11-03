@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0c161c">
   <title>IRONLINE — 渓谷防衛戦</title>
-  <link rel="stylesheet" href="./style.css?v=0.3">
+  <link rel="stylesheet" href="./style.css?v=0.4">
 </head>
 <body>
 <div id="ironline" class="game-shell">
@@ -13,7 +13,7 @@
     <div class="brand">
       <span class="brand-mark">◆</span>
       <span>IRONLINE</span>
-      <span class="version">ALPHA 0.3</span>
+      <span class="version">ALPHA 0.4</span>
     </div>
 
     <div class="mission-name">
@@ -52,12 +52,14 @@
     <div class="battle-topbar">
       <div id="battle-message">防衛施設を設置してください</div>
       <div class="battle-controls">
+        <button id="sound-button" type="button" aria-label="効果音">♪</button>
         <button id="pause-button" type="button">Ⅱ</button>
         <button id="speed-button" type="button">×1</button>
       </div>
     </div>
 
     <div id="strike-hint" class="strike-hint hidden">爆撃地点をマップで指定！</div>
+    <div id="battle-combo" class="battle-combo hidden">0 COMBO</div>
     <div class="battle-bottombar">
       <span id="enemy-count">敵部隊：0</span>
       <span id="game-status">STANDBY</span>
@@ -73,29 +75,30 @@
       <div class="panel-hint">兵器を選んで配置</div>
     </div>
 
+    <div class="guide-banner" id="guide-banner"><strong>MISSION 01：はじめての防衛</strong><span id="guide-text">① 光るマスをタップして機関銃を配置しよう！</span></div>
     <div class="tower-grid">
       <button class="tower-card selected" data-tower="machinegun" type="button">
         <span class="tower-symbol machinegun-symbol">MG</span>
         <span class="tower-name">機関銃</span>
-        <span class="tower-price">100 G</span>
+        <span class="tower-price">100 G</span><span class="tower-desc">歩兵に強い・高速連射</span>
       </button>
 
       <button class="tower-card" data-tower="cannon" type="button">
         <span class="tower-symbol cannon-symbol">HE</span>
         <span class="tower-name">榴弾砲</span>
-        <span class="tower-price">180 G</span>
+        <span class="tower-price">180 G</span><span class="tower-desc">範囲爆発・集団に強い</span>
       </button>
 
       <button class="tower-card" data-tower="missile" type="button">
         <span class="tower-symbol missile-symbol">MS</span>
         <span class="tower-name">ミサイル</span>
-        <span class="tower-price">250 G</span>
+        <span class="tower-price">250 G</span><span class="tower-desc">高威力・戦車に強い</span>
       </button>
 
       <button class="tower-card" data-tower="radar" type="button">
         <span class="tower-symbol radar-symbol">EW</span>
         <span class="tower-name">電子戦</span>
-        <span class="tower-price">200 G</span>
+        <span class="tower-price">200 G</span><span class="tower-desc">敵を遅くする支援兵器</span>
       </button>
     </div>
 
@@ -106,6 +109,10 @@
         <span id="build-summary">選択した戦術で部隊を強化しよう</span>
       </div>
       <button id="airstrike-button" class="airstrike-button" type="button" disabled>✈ 航空爆撃 <span id="strike-charge">50%</span></button>
+    </div>
+    <div class="upgrade-preview" id="upgrade-preview">
+      <strong id="upgrade-next">機関銃 Lv.1 → Lv.3 二連装ガトリング</strong>
+      <span id="upgrade-detail">育てるほど銃身と弾幕が増加。Lv.5で四連装に進化！</span>
     </div>
     <div id="tower-info" class="tower-info">
       配置可能なマスをタップしてください
@@ -154,6 +161,6 @@
 </div>
 
 
-<script src="./script.js?v=0.3" defer></script>
+<script src="./script.js?v=0.4" defer></script>
 </body>
 </html>
