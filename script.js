@@ -96,6 +96,7 @@
     selectedPad = -1;
     draftForWave=0;strikeAiming=false;strikeRings=[];combatTexts=[];kick=0;smokes=[];flashes=[];beams=[];shockwaves=[];screenFlash=0;combo=0;comboClock=0;missionBanner=0;ambientTime=0;
     $("draft-modal").classList.add("hidden");
+    $("wave-alert").classList.add("hidden");
     $("strike-hint").classList.add("hidden");
     $("evolution-modal").classList.add("hidden");
     $("result-modal").classList.add("hidden");
@@ -1105,10 +1106,11 @@
       String(state.wave).padStart(2,"0")+" / 20";
     $("enemy-count").textContent="敵部隊："+(enemies.length+state.queue.length)+" / KILLS "+state.kills;
     const profile=waveProfile(Math.min(20,state.wave+1));
-    const progress=Math.min(100,Math.max(0,state.xp/state.xpNeed*100));
+    const anyEvolution=towers.some(t=>t.type==="machinegun"?(!t.branch||t.mods.length<2):t.mods.length<3);
+    const progress=anyEvolution?Math.min(100,Math.max(0,state.xp/state.xpNeed*100)):0;
     $("evolution-progress").style.width=progress+"%";
     $("evolution-meter-value").textContent=Math.floor(progress)+"%";
-    $("evolution-meter-label").textContent=state.choosing?"進化先を選択中":progress>=100?"進化準備完了！":"進化まであと "+Math.max(0,state.xpNeed-state.xp)+" XP";
+    $("evolution-meter-label").textContent=!anyEvolution&&towers.length?"全兵器の改造が完了！":state.choosing?"進化先を選択中":progress>=100?"進化準備完了！":"進化まであと "+Math.max(0,state.xpNeed-state.xp)+" XP";
     $("enemy-intel").textContent=state.active?
       "交戦中："+waveProfile(state.wave).label:
       "WAVE "+(state.wave+1)+"： "+profile.label+" / 約"+(profile.unitCount+(profile.boss?1:0))+"体";
