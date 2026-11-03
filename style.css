@@ -183,3 +183,27 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   .tower-card { min-height: 91px; }
   .control-panel { padding: 12px 9px 20px; }
 }
+
+/* IRONLINE 0.2 — tactical command layer */
+.brand .version{color:#ffe399;border-color:#d4a653}
+.tactical-panel{display:grid;gap:10px;margin:12px 0}
+.intel-box{display:grid;gap:5px;background:linear-gradient(115deg,#1d343a,#16262e);border:1px solid #476e6c;border-left:3px solid #b5e27b;padding:11px;border-radius:9px}
+.intel-box small{font-size:10px;letter-spacing:1.4px;color:#a8ded8}
+.intel-box strong{font-size:13px;color:#f1f7dd}
+.intel-box span{font-size:11px;color:#b6c7bf}
+.airstrike-button{width:100%;min-height:53px;border:1px solid #e6a956;background:linear-gradient(115deg,#6c3b24,#a25129);color:#fff3cf;border-radius:10px;font-size:15px;font-weight:900;box-shadow:0 4px 0 #3d2218}
+.airstrike-button.ready{background:linear-gradient(105deg,#cf7136,#f4af4b);color:#212b29;box-shadow:0 0 20px #ffb85c60}
+.airstrike-button.aiming{animation:aimPulse .55s infinite alternate}
+.airstrike-button:disabled{opacity:.55}
+.airstrike-button span{display:inline-block;margin-left:10px;font-family:Rajdhani,sans-serif;font-size:20px}
+.strike-hint{position:absolute;left:12%;right:12%;top:48%;padding:12px;text-align:center;color:#1c2c30;background:#ffe598;border:3px solid #fff5c8;border-radius:10px;font-weight:900;z-index:5;pointer-events:none;animation:aimPulse .55s infinite alternate}
+@keyframes aimPulse{to{filter:brightness(1.35);transform:scale(1.02)}}
+.draft-content{border:2px solid #adcf8a;background:linear-gradient(155deg,#1e393e,#0d1a23)}
+.draft-content h2{color:#f9e1a2}
+#draft-options{display:grid;gap:10px;margin:16px 0}
+.draft-option{display:grid;text-align:left;gap:5px;padding:15px;border:1px solid #507068;border-radius:10px;color:#f1f7ec;background:linear-gradient(110deg,#294640,#172a30);cursor:pointer}
+.draft-option:active{transform:scale(.985)}
+.draft-option strong{font-size:16px;color:#f4d98a}
+.draft-option span{font-size:12px;line-height:1.5;color:#d4e6dd}
+.draft-option small{font-size:10px;letter-spacing:1px;color:#b6e5b2}
+.draft-footnote{font-size:10px;color:#a3bdb2;line-height:1.6}
