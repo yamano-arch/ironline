@@ -1,0 +1,131 @@
+
+<link rel="stylesheet" href="./style.css">
+
+<div id="ironline" class="game-shell">
+  <header class="game-header">
+    <div class="brand">
+      <span class="brand-mark">◆</span>
+      <span>IRONLINE</span>
+      <span class="version">ALPHA 0.1</span>
+    </div>
+
+    <div class="mission-name">
+      OPERATION 01 — 渓谷防衛戦
+    </div>
+
+    <div class="status-bar">
+      <div class="status-item health">
+        <span class="status-icon">♥</span>
+        <div>
+          <small>BASE HP</small>
+          <strong id="base-hp">20 / 20</strong>
+        </div>
+      </div>
+
+      <div class="status-item money">
+        <span class="status-icon">●</span>
+        <div>
+          <small>CREDITS</small>
+          <strong id="credits">500 G</strong>
+        </div>
+      </div>
+
+      <div class="status-item wave">
+        <div>
+          <small>ENEMY WAVE</small>
+          <strong id="wave-count">00 / 20</strong>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="battle-area">
+    <canvas id="game-canvas" width="390" height="520"></canvas>
+
+    <div class="battle-topbar">
+      <div id="battle-message">防衛施設を設置してください</div>
+      <div class="battle-controls">
+        <button id="pause-button" type="button">Ⅱ</button>
+        <button id="speed-button" type="button">×1</button>
+      </div>
+    </div>
+
+    <div class="battle-bottombar">
+      <span id="enemy-count">敵部隊：0</span>
+      <span id="game-status">STANDBY</span>
+    </div>
+  </main>
+
+  <section class="control-panel">
+    <div class="panel-heading">
+      <div>
+        <small>DEFENSE SYSTEM</small>
+        <h2>防衛施設</h2>
+      </div>
+      <div class="panel-hint">兵器を選んで配置</div>
+    </div>
+
+    <div class="tower-grid">
+      <button class="tower-card selected" data-tower="machinegun" type="button">
+        <span class="tower-symbol machinegun-symbol">MG</span>
+        <span class="tower-name">機関銃</span>
+        <span class="tower-price">100 G</span>
+      </button>
+
+      <button class="tower-card" data-tower="cannon" type="button">
+        <span class="tower-symbol cannon-symbol">HE</span>
+        <span class="tower-name">榴弾砲</span>
+        <span class="tower-price">180 G</span>
+      </button>
+
+      <button class="tower-card" data-tower="missile" type="button">
+        <span class="tower-symbol missile-symbol">MS</span>
+        <span class="tower-name">ミサイル</span>
+        <span class="tower-price">250 G</span>
+      </button>
+
+      <button class="tower-card" data-tower="radar" type="button">
+        <span class="tower-symbol radar-symbol">EW</span>
+        <span class="tower-name">電子戦</span>
+        <span class="tower-price">200 G</span>
+      </button>
+    </div>
+
+    <div id="tower-info" class="tower-info">
+      配置可能なマスをタップしてください
+    </div>
+
+    <div class="action-row">
+      <button id="upgrade-button" type="button" disabled>↑ 強化</button>
+      <button id="sell-button" type="button" disabled>売却</button>
+    </div>
+
+    <button id="start-wave" class="start-button" type="button">
+      ▶ WAVE 1 開始
+    </button>
+  </section>
+
+  <div id="evolution-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-eyebrow">WEAPON MODIFICATION</div>
+      <h2>兵器改造</h2>
+      <p>新たな能力を1つ選択してください</p>
+      <div id="evolution-options"></div>
+      <button id="reroll-button" type="button">候補を引き直す</button>
+    </div>
+  </div>
+
+  <div id="result-modal" class="modal hidden">
+    <div class="modal-content result-content">
+      <div id="result-icon" class="result-icon">★</div>
+      <h2 id="result-title">MISSION COMPLETE</h2>
+      <p id="result-description">防衛作戦終了</p>
+      <div id="result-stats"></div>
+      <button id="retry-button" class="start-button" type="button">
+        再挑戦
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="./script.js" defer></script>
