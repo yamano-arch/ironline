@@ -47,19 +47,35 @@
   let state, towers, enemies, bullets, effects;
   let selectedType, selectedPad, lastTime = 0;
   let nextEnemyId = 1;
+  let draftForWave=0, strikeAiming=false, strikeRings=[], combatTexts=[];
+  const TACTICS = [
+    {id:"warfund",tier:"ECONOMY",name:"💰 戦時特別予算",desc:"即時 +200G。配置と強化で敵を迎え撃つ。",apply:()=>state.money+=200},
+    {id:"overclock",tier:"FIREPOWER",name:"🔥 全砲門オーバークロック",desc:"全兵器の連射速度 +18%。以後の設置にも適用。",apply:()=>{state.fireRate*=.82;towers.forEach(t=>t.interval*=.82)}},
+    {id:"ammunition",tier:"FIREPOWER",name:"💥 強化弾頭",desc:"全兵器の攻撃力 +25%。以後の設置にも適用。",apply:()=>{state.globalPower*=1.25;towers.forEach(t=>t.power*=1.25)}},
+    {id:"radial",tier:"TACTICAL",name:"🎯 精密レーダー",desc:"全兵器の射程 +17%。以後の設置にも適用。",apply:()=>{state.globalRange*=1.17;towers.forEach(t=>t.range*=1.17)}},
+    {id:"salvage",tier:"ECONOMY",name:"⚙ 戦場回収班",desc:"敵撃破報酬 +35%。撃破するほど資金が増える。",apply:()=>state.rewardRate*=1.35},
+    {id:"bunker",tier:"DEFENSE",name:"🛡 緊急防壁",desc:"基地HPを5回復し、最大HPも2増加。",apply:()=>{state.maxHp+=2;state.hp=Math.min(state.maxHp,state.hp+5)}},
+    {id:"airforce",tier:"SUPPORT",name:"✈ 航空優勢",desc:"爆撃ゲージ +50%。爆撃の威力も +25%。",apply:()=>{state.strike=Math.min(100,state.strike+50);state.strikePower*=1.25}},
+    {id:"armor",tier:"ANTI-ARMOR",name:"🔩 対装甲弾",desc:"全兵器に装甲貫通 +20%。戦車の突破を防ぐ。",apply:()=>{state.globalPierce+=.2;towers.forEach(t=>t.pierce+=.2)}}
+  ];
 
   function reset() {
     state = {
-      hp:20, money:500, wave:0, active:false,
+      hp:20, maxHp:20, money:500, wave:0, active:false,
       paused:false, speed:1, finished:false,
       queue:[], spawnTimer:0, xp:0, xpNeed:80,
       upgrades:0, rerolls:3, choosing:false,
+       globalPower:1,globalRange:1,fireRate:1,rewardRate:1,globalPierce:0,
+       strike:50,strikePower:1,usedTactics:[],kills:0,eliteKills:0,
       note:"防衛施設を設置してください",
       noteTime:0
     };
     towers = []; enemies = []; bullets = []; effects = [];
     selectedType = "machinegun";
     selectedPad = -1;
+    draftForWave=0;strikeAiming=false;strikeRings=[];combatTexts=[];
+    $("draft-modal").classList.add("hidden");
+    $("strike-hint").classList.add("hidden");
     $("evolution-modal").classList.add("hidden");
     $("result-modal").classList.add("hidden");
     updateUI();
@@ -79,9 +95,9 @@
     const [x,y] = PADS[index];
     return {
       pad:index, type, x,y, level:1, spent:d.cost,
-      power:1, interval:d.rate, range:d.range,
+      power:state.globalPower, interval:d.rate*state.fireRate, range:d.range*state.globalRange,
       cooldown:0, angle:-Math.PI/2,
-      pierce:0, critical:0, blast:0,
+      pierce:state.globalPierce, critical:0, blast:0,
       chain:false, slow:false, mods:[],
       evolution:null, kills:0
     };
@@ -141,40 +157,94 @@
     updateUI();
   }
 
+  function waveProfile(n) {
+    const unitCount=9+Math.floor(n*1.8);
+    const tank=n>=5 && (n%3===0 || n>=14);
+    const drone=n>=6 && (n%4===0 || n>=15);
+    const rush=n%4===2;
+    const swarm=n%4===1;
+    return {unitCount,tank,drone,rush,swarm,boss:n%5===0,
+      label:(n%5===0?"⚠ 重装甲指揮官 / ":"")+
+        (rush?"高速突破部隊":swarm?"歩兵の大群":tank?"重装甲突撃":drone?"ドローン奇襲":"混成戦闘部隊")};
+  }
   function waveKinds(n) {
-    const result = [];
-    const total = 7 + Math.floor(n * 1.35);
-
-    for (let i=0; i<total; i++) {
-      let kind = "infantry";
-      if (n >= 4 && i % 5 === 0) kind = "car";
-      if (n >= 7 && i % 7 === 0) kind = "tank";
-      if (n >= 11 && i % 6 === 0) kind = "drone";
+    const profile=waveProfile(n),result=[];
+    for(let i=0;i<profile.unitCount;i++){
+      let kind="infantry";
+      if(n>=3&&i%5===0)kind="car";
+      if(profile.tank && i%4===0)kind="tank";
+      if(profile.drone && i%5===2)kind="drone";
+      if(profile.rush && i%3===0)kind="car";
       result.push(kind);
     }
-    if (n === 20) result.push("boss");
+    if(profile.boss)result.push("boss");
     return result;
   }
-
+  function tacticalDraft(n) {
+    state.choosing=true;
+    state.paused=true;
+    $("draft-wave").textContent=String(n).padStart(2,"0");
+    const p=waveProfile(n);
+    $("draft-intel").textContent=p.label+" / 推定"+(p.unitCount+(p.boss?1:0))+"体。戦術強化を1つ選んで出撃。";
+    const holder=$("draft-options");
+    holder.innerHTML="";
+    const pool=[...TACTICS].sort(()=>Math.random()-.5);
+    const options=pool.slice(0,3);
+    options.forEach(card=>{
+      const button=document.createElement("button");
+      button.type="button";button.className="draft-option";
+      const type=document.createElement("small"),head=document.createElement("strong"),desc=document.createElement("span");
+      type.textContent=card.tier;head.textContent=card.name;desc.textContent=card.desc;
+      button.append(type,head,desc);
+      button.onclick=()=>{
+        card.apply();state.usedTactics.push(card.name.replace(/^[^ ]+ /,""));
+        state.choosing=false;state.paused=false;
+        $("draft-modal").classList.add("hidden");
+        launchWave(n);updateUI();
+      };
+      holder.append(button);
+    });
+    $("draft-modal").classList.remove("hidden");
+    updateUI();
+  }
+  function launchWave(n) {
+    draftForWave=n;
+    state.wave=n;state.active=true;
+    state.queue=waveKinds(n);
+    state.spawnTimer=.5;state.paused=false;
+    notice("WAVE "+n+" — "+waveProfile(n).label);
+  }
   function startWave() {
-    if (state.active || state.finished || state.choosing) return;
-    state.wave++;
-    state.active = true;
-    state.queue = waveKinds(state.wave);
-    state.spawnTimer = .5;
-    state.paused = false;
-    notice("WAVE " + state.wave + " — 敵部隊接近！");
+    if(state.active||state.finished||state.choosing)return;
+    tacticalDraft(state.wave+1);
+  }
+  function useAirstrike(x,y) {
+    if(state.strike<100 || !state.active || state.paused)return;
+    state.strike=0;strikeAiming=false;
+    $("strike-hint").classList.add("hidden");
+    strikeRings.push({x,y,radius:12,life:.7});
+    const dmg=240*state.strikePower+state.wave*32;
+    let hits=0;
+    enemies.forEach(e=>{
+      if(e.alive&&Math.hypot(e.x-x,e.y-y)<105){
+        hurt(e,dmg,{pierce:1,critical:0,slow:false,kills:0});hits++;
+      }
+    });
+    for(let i=0;i<5;i++)burst(x+(Math.random()-.5)*95,y+(Math.random()-.5)*95,"#ffb75f",30);
+    combatTexts.push({x,y:y-20,text:"AIRSTRIKE ×"+hits,life:1.6,color:"#fff3af"});
+    notice("✈ 航空爆撃！ "+hits+"体を攻撃");
     updateUI();
   }
 
   function spawnEnemy(kind) {
     const d = KIND[kind];
-    const scale = 1 + (state.wave-1) * .11;
+    const scale = 1 + (state.wave-1) * .13;
+    const elite=kind!=="boss" && state.wave>=3 && Math.random()<Math.min(.38,.08+state.wave*.013);
     return {
       id:nextEnemyId++, kind,
       x:PATH[0][0], y:PATH[0][1],
-      segment:0, hp:d.hp*scale, maxHp:d.hp*scale,
-      speed:d.speed, armor:d.armor, reward:d.reward,
+      segment:0, hp:d.hp*scale*(elite?2.2:1), maxHp:d.hp*scale*(elite?2.2:1),
+      speed:d.speed*(elite?1.16:1), armor:d.armor, reward:d.reward*(elite?3:1), elite,
       damage:d.damage, color:d.color,
       slowTime:0, alive:true, angle:0
     };
@@ -210,6 +280,7 @@
     if (e.segment >= PATH.length-1) {
       e.alive=false;
       state.hp -= e.damage;
+      combatTexts.push({x:345,y:105,text:"BASE -"+e.damage,life:1.1,color:"#ff8176"});
       burst(e.x,e.y,"#ff7373",13);
     }
   }
@@ -230,15 +301,19 @@
     if (!e.alive) return;
     const armor = e.armor * (1-Math.min(.9,source.pierce));
     const crit = Math.random()<source.critical ? 1.8 : 1;
-    e.hp -= amount*(1-armor)*crit;
+    const actual=amount*(1-armor)*crit;
+    e.hp -= actual;
+    if(actual>15 && Math.random()<.35)combatTexts.push({x:e.x,y:e.y-18,text:"-"+Math.round(actual),life:.65,color:crit>1?"#ffe88d":"#e7f2d2"});
     if(source.slow)e.slowTime=Math.max(e.slowTime,1.5);
 
     if(e.hp<=0){
       e.alive=false;
-      state.money+=e.reward;
+      state.money+=Math.round(e.reward*state.rewardRate);
+      state.kills++;if(e.elite)state.eliteKills++;
+      state.strike=Math.min(100,state.strike+(e.kind==="boss"?38:e.elite?12:4));
       state.xp+=e.kind==="boss"?20:4;
       source.kills++;
-      burst(e.x,e.y,"#ffbf61",12);
+      burst(e.x,e.y,e.elite?"#ffe18b":"#ffbf61",e.elite?25:12);
     }
   }
 
@@ -454,15 +529,21 @@
       "全20ウェーブを防衛しました！":
       "基地が陥落しました";
 
-    const stars=state.hp===20?3:state.hp>=11?2:1;
+    const stars=state.hp===state.maxHp?3:state.hp>=11?2:1;
     $("result-stats").textContent=
       "到達 WAVE "+state.wave+
-      " / 20 ｜ 防衛評価："+(win?"★".repeat(stars):"—");
+      " / 20 ｜ 撃破 "+state.kills+" ｜ エリート撃破 "+state.eliteKills+
+      " ｜ 獲得戦術 "+state.usedTactics.length+
+      " ｜ 防衛評価："+(win?"★".repeat(stars):"—");
     updateUI();
   }
 
   function update(dt) {
     updateEffects(dt);
+    combatTexts.forEach(p=>{p.y-=21*dt;p.life-=dt;});
+    combatTexts=combatTexts.filter(p=>p.life>0);
+    strikeRings.forEach(p=>{p.radius+=200*dt;p.life-=dt;});
+    strikeRings=strikeRings.filter(p=>p.life>0);
     if(state.paused||state.choosing||state.finished)return;
 
     if(state.noteTime>0){
@@ -472,11 +553,13 @@
     }
 
     if(!state.active)return;
-
+    if(state.strike>=100 && !state.choosing && state.noteTime<=0 && state.kills>0){
+      $("battle-message").textContent="✈ 航空爆撃 READY — ここで逆転！";
+    }
     state.spawnTimer-=dt;
     if(state.queue.length&&state.spawnTimer<=0){
       enemies.push(spawnEnemy(state.queue.shift()));
-      state.spawnTimer=.42;
+      state.spawnTimer=waveProfile(state.wave).rush?.28:waveProfile(state.wave).swarm?.32:.47;
     }
 
     enemies.forEach(e=>{
@@ -505,7 +588,7 @@
     if(!state.queue.length&&!enemies.length){
       state.active=false;
       state.money+=50;
-      if(state.hp===20)state.money+=20;
+      if(state.hp===state.maxHp)state.money+=20;
       state.xp+=15;
       notice("WAVE "+state.wave+" 突破！");
       if(state.wave>=20){
@@ -669,6 +752,12 @@
     ctx.fillRect(-size,-size-11,
       size*2*Math.max(0,e.hp/e.maxHp),4);
     ctx.restore();
+    if(e.elite){
+      ctx.strokeStyle="#ffcc64";ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(e.x,e.y,(e.kind==="tank"?23:18),0,Math.PI*2);ctx.stroke();
+      ctx.fillStyle="#fff3b1";ctx.font="bold 9px sans-serif";ctx.textAlign="center";
+      ctx.fillText("★",e.x,e.y-24);
+    }
   }
 
   function draw() {
@@ -693,6 +782,21 @@
       circle(b.x,b.y,8,b.color+"44");
     });
 
+    strikeRings.forEach(p=>{
+      ctx.save();
+      ctx.globalAlpha=Math.max(0,p.life/.7)*.7;
+      circle(p.x,p.y,Math.max(5,p.radius),"#ffb85544");
+      ctx.strokeStyle="#ffe5a2";ctx.lineWidth=5;
+      ctx.beginPath();ctx.arc(p.x,p.y,p.radius,0,Math.PI*2);ctx.stroke();
+      ctx.restore();
+    });
+    combatTexts.forEach(p=>{
+      ctx.save();ctx.globalAlpha=Math.min(1,p.life*1.8);
+      ctx.fillStyle=p.color;ctx.strokeStyle="#19232b";ctx.lineWidth=3;
+      ctx.font="900 14px Rajdhani,sans-serif";ctx.textAlign="center";
+      ctx.strokeText(p.text,p.x,p.y);ctx.fillText(p.text,p.x,p.y);
+      ctx.restore();
+    });
     effects.forEach(p=>{
       ctx.globalAlpha=Math.max(0,p.life/p.max);
       circle(p.x,p.y,p.size,p.color);
@@ -710,11 +814,23 @@
   }
 
   function updateUI() {
-    $("base-hp").textContent=state.hp+" / 20";
+    $("base-hp").textContent=state.hp+" / "+state.maxHp;
     $("credits").textContent=state.money+" G";
     $("wave-count").textContent=
       String(state.wave).padStart(2,"0")+" / 20";
-    $("enemy-count").textContent="敵部隊："+enemies.length;
+    $("enemy-count").textContent="敵部隊："+(enemies.length+state.queue.length)+" / KILLS "+state.kills;
+    const profile=waveProfile(Math.min(20,state.wave+1));
+    $("enemy-intel").textContent=state.active?
+      "交戦中："+waveProfile(state.wave).label:
+      "WAVE "+(state.wave+1)+"： "+profile.label+" / 約"+(profile.unitCount+(profile.boss?1:0))+"体";
+    $("build-summary").textContent=state.usedTactics.length?
+      "獲得戦術 "+state.usedTactics.length+"個 ｜ "+state.usedTactics.slice(-2).join("・"):
+      "各ウェーブ直前にランダム3択の永続戦術を獲得";
+    const strike=$("airstrike-button");
+    strike.disabled=state.strike<100||!state.active||state.paused||state.finished;
+    strike.classList.toggle("ready",state.strike>=100);
+    strike.classList.toggle("aiming",strikeAiming);
+    $("strike-charge").textContent=Math.floor(state.strike)+"%";
     $("game-status").textContent=state.finished?"END":
       state.paused?"PAUSED":state.active?"IN BATTLE":"STANDBY";
 
@@ -755,6 +871,11 @@
       const d=Math.hypot(p[0]-x,p[1]-y);
       if(d<nearest){nearest=d;index=i;}
     });
+    if(strikeAiming) {
+      if(state.strike>=100 && state.active && !state.paused)useAirstrike(x,y);
+      else{strikeAiming=false;$("strike-hint").classList.add("hidden");}
+      return;
+    }
     if(index>=0)selectPad(index);
   });
 
@@ -766,6 +887,13 @@
     };
   });
 
+  $("airstrike-button").onclick=()=>{
+    if(state.strike<100||!state.active||state.paused)return;
+    strikeAiming=!strikeAiming;
+    $("strike-hint").classList.toggle("hidden",!strikeAiming);
+    notice(strikeAiming?"✈ 爆撃したい地点をタップ！":"爆撃指定を解除");
+    updateUI();
+  };
   $("start-wave").onclick=startWave;
   $("upgrade-button").onclick=upgradeTower;
   $("sell-button").onclick=sellTower;
@@ -774,6 +902,7 @@
   $("pause-button").onclick=()=>{
     if(state.choosing||state.finished)return;
     state.paused=!state.paused;
+    if(state.paused){strikeAiming=false;$("strike-hint").classList.add("hidden");}
     updateUI();
   };
 
