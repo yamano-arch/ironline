@@ -207,3 +207,24 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .draft-option span{font-size:12px;line-height:1.5;color:#d4e6dd}
 .draft-option small{font-size:10px;letter-spacing:1px;color:#b6e5b2}
 .draft-footnote{font-size:10px;color:#a3bdb2;line-height:1.6}
+
+/* ALPHA 0.3 — modern warfare visual overhaul */
+:root{--bg:#071619;--panel:#11262c;--panel-light:#1b353b;--border:#416b68;--green:#9cf1cb;--orange:#ffbd69;--text:#e8f9f3;--muted:#9abeb5}
+.game-shell{background:#07191c;box-shadow:0 0 0 1px #2c5355,0 0 70px #000a}
+.game-header{background:linear-gradient(135deg,#1e393c,#08171f 85%);border-bottom:2px solid #6fd5ad}
+.brand{letter-spacing:1.5px;text-shadow:0 0 17px #6de6c13b}
+.brand-mark{color:#68e6c6}
+.mission-name{color:#b3d5cd;letter-spacing:2px}
+.battle-area{background:#203c35}
+.battle-topbar{pointer-events:none}
+.battle-topbar button{pointer-events:auto}
+.battle-topbar #battle-message{border-left:3px solid #a2f2d8;box-shadow:0 4px 13px #08171999}
+.status-item{background:#0c2127;border-color:#3b6360}
+.tower-card{background:linear-gradient(160deg,#24403d,#142c32);border-color:#4a7770;transition:transform .12s,border-color .15s}
+.tower-card.selected{background:linear-gradient(160deg,#35594d,#1c3935);border-color:#9ff2c3;box-shadow:inset 0 0 0 1px #9ff2c355,0 0 15px #69ffb222}
+.tower-card:active{transform:scale(.95)}
+.tower-symbol{box-shadow:0 3px 5px #0007}
+.control-panel{background:linear-gradient(180deg,#10282d,#071a1e)}
+.panel-heading h2{color:#ddf9f0}
+.start-button{background:linear-gradient(115deg,#a9f1c6,#78cbad);color:#102c2c;box-shadow:0 4px 0 #305e51}
+.intel-box{background:linear-gradient(115deg,#173338,#0d2429);border-color:#4c8b79;border-left-color:#78e6b2}
