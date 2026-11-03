@@ -274,3 +274,15 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .branch-choice:nth-child(3) .choice-symbol{background:radial-gradient(circle,#e4b5ff,#694aab)}
 .evolution-choice:hover{transform:translateY(-2px);box-shadow:0 8px 22px #0008}
 @media (max-width:420px){#evolution-modal .modal-content{padding:19px 13px}.evolution-choice.branch-choice{min-height:91px;padding:11px;gap:10px}.branch-choice .choice-symbol{flex-basis:51px;height:51px}.branch-choice .choice-copy strong{font-size:15px}}
+
+/* ALPHA 0.7 — battlefield tempo and first-evolution clarity */
+.wave-alert{position:absolute;z-index:6;left:5%;right:5%;top:34%;font:900 22px Rajdhani,'Noto Sans JP',sans-serif;text-align:center;letter-spacing:1.5px;padding:15px 8px;color:#ffe7ba;background:linear-gradient(90deg,#05151dcc,#7d392ecc,#05151dcc);border-top:2px solid #ff9773;border-bottom:2px solid #ff9773;text-shadow:0 2px 9px #000;box-shadow:0 0 28px #e34f4b55;pointer-events:none;animation:missionIn .35s both}
+@keyframes missionIn{from{transform:scale(1.14);opacity:0}to{transform:scale(1);opacity:1}}
+.evolution-meter{padding:12px 13px;margin:10px 0 12px;border-radius:11px;background:linear-gradient(110deg,#263e49,#1a2a35);border:1px solid #6691a0;box-shadow:inset 0 1px #ffffff16}
+.evolution-meter-top{display:flex;justify-content:space-between;gap:8px;color:#d9f9f0;font:800 12px Rajdhani,sans-serif;letter-spacing:1.2px}
+.evolution-meter-top strong{color:#ffdb8c;font-size:18px}
+.evolution-meter-track{height:11px;margin:7px 0 6px;border-radius:8px;overflow:hidden;background:#06191e;border:1px solid #43616b}
+#evolution-progress{height:100%;width:0;background:linear-gradient(90deg,#66b2eb,#9df5e5 65%,#ffe188);box-shadow:0 0 13px #92f1dd;transition:width .26s ease}
+.evolution-meter small{color:#c4e6dc;font-size:10px;letter-spacing:.5px}
+.choice-role{display:block;color:#eff7d2!important;letter-spacing:0!important;font-size:10px!important;line-height:1.5!important;margin-top:3px}
+.recipe-hint{display:block;color:#ffda83!important;font-size:10px!important}
