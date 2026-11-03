@@ -48,7 +48,7 @@
   let selectedType, selectedPad, lastTime = 0;
   let nextEnemyId = 1, kick=0, beams=[];
   let smokes=[],flashes=[],soundOn=true,audio=null;
-  let shockwaves=[],screenFlash=0,combo=0,comboClock=0;
+  let shockwaves=[],screenFlash=0,combo=0,comboClock=0,missionBanner=0,ambientTime=0;
   const unlockAt={machinegun:0,cannon:1,missile:3,radar:4};
   const unlocked=type=>state.wave>=unlockAt[type];
   function sfx(kind){
@@ -94,7 +94,7 @@
     towers = []; enemies = []; bullets = []; effects = [];
     selectedType = "machinegun";
     selectedPad = -1;
-    draftForWave=0;strikeAiming=false;strikeRings=[];combatTexts=[];kick=0;smokes=[];flashes=[];beams=[];shockwaves=[];screenFlash=0;combo=0;comboClock=0;
+    draftForWave=0;strikeAiming=false;strikeRings=[];combatTexts=[];kick=0;smokes=[];flashes=[];beams=[];shockwaves=[];screenFlash=0;combo=0;comboClock=0;missionBanner=0;ambientTime=0;
     $("draft-modal").classList.add("hidden");
     $("strike-hint").classList.add("hidden");
     $("evolution-modal").classList.add("hidden");
@@ -239,6 +239,9 @@
     state.queue=waveKinds(n);
     state.spawnTimer=.5;state.paused=false;
     notice("WAVE "+n+" — "+waveProfile(n).label);
+    missionBanner=2.25;screenFlash=.17;
+    $("wave-alert").textContent="WAVE "+String(n).padStart(2,"0")+" // "+waveProfile(n).label;
+    $("wave-alert").classList.remove("hidden");
   }
   function startWave() {
     if(state.active||state.finished||state.choosing)return;
@@ -350,6 +353,7 @@
       }
       state.strike=Math.min(100,state.strike+(e.kind==="boss"?38:e.elite?12:4));
       state.xp+=e.kind==="boss"?20:4;
+      if(e.kind==="boss")notice("COMMANDER ELIMINATED！ +200G");
       source.kills++;
       burst(e.x,e.y,e.elite?"#ffe18b":"#ffbf61",e.elite?35:20);
       strikeRings.push({x:e.x,y:e.y,radius:3,life:.33});
@@ -492,6 +496,8 @@
       p.vx*=.95;p.vy*=.95;
     });
     effects=effects.filter(p=>p.life>0);
+    ambientTime+=dt;
+    if(missionBanner>0){missionBanner-=dt;if(missionBanner<=0)$("wave-alert").classList.add("hidden");}
     shockwaves.forEach(p=>{p.life-=dt;p.r+=(p.max-p.r)*Math.min(1,dt*7);});
     shockwaves=shockwaves.filter(p=>p.life>0);
     screenFlash=Math.max(0,screenFlash-dt*1.7);
@@ -508,14 +514,17 @@
       e.alive&&distance(t,e)<=t.range
     );
     if(!available.length)return null;
-    available.sort((a,b)=>b.segment-a.segment);
+    available.sort((a,b)=>{
+      const progress=e=>{if(e.segment>=PATH.length-1)return PATH.length;const to=PATH[e.segment+1],from=PATH[e.segment];const total=Math.hypot(to[0]-from[0],to[1]-from[1])||1;return e.segment+Math.max(0,1-Math.hypot(e.x-to[0],e.y-to[1])/total)};
+      return progress(b)-progress(a);
+    });
     return available[0];
   }
 
   const BRANCHES=[
-    {id:"gatling",name:"ガトリングストーム",icon:"🔥",tag:"弾幕・大群殲滅",desc:"銃身4本・高速連射。画面を弾丸で埋め尽くす。",color:"#ffbb57"},
-    {id:"rail",name:"レールガン",icon:"🎯",tag:"超火力・装甲貫通",desc:"巨大な電磁砲。重戦車を貫通ビームで撃ち抜く。",color:"#7be3ff"},
-    {id:"tesla",name:"テスラチェーン",icon:"⚡",tag:"連鎖電撃・集団制圧",desc:"敵から敵に電撃が伝播。密集部隊をまとめて攻撃。",color:"#b5a5ff"}
+    {id:"gatling",name:"ガトリングストーム",icon:"🔥",tag:"弾幕・大群殲滅",desc:"超高速4連装。歩兵の大群を一瞬で削り取る。",color:"#ffbb57"},
+    {id:"rail",name:"レールガン",icon:"🎯",tag:"超火力・装甲貫通",desc:"高威力の貫通電磁砲。重戦車・ボスへの切り札。",color:"#7be3ff"},
+    {id:"tesla",name:"テスラチェーン",icon:"⚡",tag:"連鎖電撃・集団制圧",desc:"最大3体に連鎖電撃。密集部隊を一斉に足止め。",color:"#b5a5ff"}
   ];
   const PERKS={
     gatling:[
@@ -614,20 +623,23 @@
         const wrap=document.createElement("span");wrap.className="choice-copy";
         const strong=document.createElement("strong");strong.textContent=m.name;
         const desc=document.createElement("span");desc.textContent=m.desc;
-        wrap.append(strong,desc);
+        if(branchChoice){const role=document.createElement("small");role.className="choice-role";role.textContent=m.id==="gatling"?"得意：歩兵・高速の大群　/　苦手：重装甲":m.id==="rail"?"得意：戦車・ボス　/　苦手：広域の雑魚": "得意：密集・高速部隊　/　苦手：単独の重装甲";desc.afterRole=role;}
+        wrap.append(strong,desc);if(desc.afterRole)wrap.append(desc.afterRole);
         if(m.tag){const tag=document.createElement("small");tag.textContent=m.tag;wrap.append(tag);}
+        if(!branchChoice&&t.branch){const goal=document.createElement("small");goal.className="recipe-hint";goal.textContent=(t.branch==="gatling"&&["ricochet","barrage"].includes(m.id)||t.branch==="rail"&&["penetrate","overcharge"].includes(m.id)||t.branch==="tesla"&&["conduction","spread"].includes(m.id))?"★ 覚醒レシピの必須パーツ":"別系統のカスタマイズ";wrap.append(goal);}
         button.append(symbol,wrap);
         button.onclick=()=>{
           if(branchChoice){
             t.branch=m.id;t.mods=[];t.evolution=null;
-            if(m.id==="gatling"){t.interval*=.55;t.power*=1.1;}
-            if(m.id==="rail"){t.interval*=3;t.power*=4;t.pierce=1;}
-            if(m.id==="tesla"){t.interval*=1.35;t.power*=.95;t.chain=true;}
+            if(m.id==="gatling"){t.interval*=.55;t.power*=.85;t.range*=.92;}
+            if(m.id==="rail"){t.interval*=2.5;t.power*=9;t.pierce=1;t.range*=1.18;}
+            if(m.id==="tesla"){t.interval*=1.12;t.power*=2.1;t.chain=true;t.range*=.93;}
             t.glow=.5;kick=5;sfx("unlock");
             combatTexts.push({x:t.x,y:t.y-40,text:m.name+"!",life:2,color:m.color});
           }else{applyMod(t,m);checkEvolution(t);}
           state.xp=Math.max(0,state.xp-state.xpNeed);
           state.upgrades++;state.xpNeed=state.upgrades<3?70:105;
+          screenFlash=Math.max(screenFlash,.55);shockwaves.push({x:t.x,y:t.y,r:5,max:180,life:.9,color:m.color||"#ffdb84"});
           state.choosing=false;state.paused=false;
           $("evolution-modal").classList.add("hidden");
           if(!t.awakened)notice((branchChoice?"進化完了：":"能力獲得：")+m.name);
@@ -858,6 +870,26 @@
     ctx.save();ctx.rotate(t.angle+Math.PI/2);ctx.translate(0,t.recoil*7);
     if(t.type==="machinegun"){
       rounded(-12,-12,24,20,4,"#214440");
+      if(t.branch==="rail"){
+        // Massive electric accelerator, entirely different silhouette from a gun.
+        rounded(-15,-13,30,27,6,"#123b54");
+        rounded(-11,-48,22,43,4,"#207baa");
+        rounded(-7,-56,14,48,3,"#a8ebff");
+        rounded(-3,-60,6,48,2,"#f0ffff");
+        [-36,-24,-12].forEach(y=>{rounded(-15,y,30,5,2,"#1c4e71");circle(-13,y+2,3,"#7be5ff");circle(13,y+2,3,"#7be5ff")});
+        circle(0,-54,7+Math.sin(ambientTime*10)*2,"#78e7ff");
+        circle(0,-54,3,"#fff");
+      }else if(t.branch==="tesla"){
+        // Two separated high-voltage coils on a compact generator.
+        rounded(-16,-16,32,32,6,"#413c70");
+        for(const x of [-13,13]){
+          rounded(x-5,-36,10,29,4,"#6152a2");
+          for(let y=-32;y<-8;y+=6)rounded(x-7,y,14,3,2,"#af9cf9");
+          circle(x,-38,7+Math.sin(ambientTime*11+x)*2,"#bc9cff");
+          circle(x,-38,3,"#f8ecff");
+        }
+        for(let k=0;k<3;k++){const angle=ambientTime*3+k*Math.PI*2/3;circle(Math.cos(angle)*21,Math.sin(angle)*19-5,3,"#e6bcff");}
+      }else{
       const barrels=t.awakened&&t.branch==="gatling"?8:t.branch==="gatling"?4:t.level>=5?4:t.level>=3?2:1;
       for(let k=0;k<barrels;k++){const x=(k-(barrels-1)/2)*(barrels>=8?4:7);
         rounded(x-2,-33,4,29,1,"#d4e0c7");circle(x,-33,3,"#10282b");
@@ -867,6 +899,7 @@
       if(t.branch==="rail"){rounded(-6,-45,12,28,2,"#69c7ed");circle(0,-45,6,"#b6faff");}
       if(t.branch==="tesla"){ctx.strokeStyle="#bcaaff";ctx.lineWidth=3;
         ctx.beginPath();ctx.arc(0,-18,17,Math.PI*1.05,Math.PI*1.95);ctx.stroke();circle(0,-33,5,"#e4d6ff");}
+      }
     }else if(t.type==="cannon"){
       rounded(-8,-12,16,28,4,"#243d37");
       rounded(-5,-38,10,35,2,"#d5c4a0");
@@ -1072,6 +1105,10 @@
       String(state.wave).padStart(2,"0")+" / 20";
     $("enemy-count").textContent="敵部隊："+(enemies.length+state.queue.length)+" / KILLS "+state.kills;
     const profile=waveProfile(Math.min(20,state.wave+1));
+    const progress=Math.min(100,Math.max(0,state.xp/state.xpNeed*100));
+    $("evolution-progress").style.width=progress+"%";
+    $("evolution-meter-value").textContent=Math.floor(progress)+"%";
+    $("evolution-meter-label").textContent=state.choosing?"進化先を選択中":progress>=100?"進化準備完了！":"進化まであと "+Math.max(0,state.xpNeed-state.xp)+" XP";
     $("enemy-intel").textContent=state.active?
       "交戦中："+waveProfile(state.wave).label:
       "WAVE "+(state.wave+1)+"： "+profile.label+" / 約"+(profile.unitCount+(profile.boss?1:0))+"体";
