@@ -46,7 +46,7 @@
 
   let state, towers, enemies, bullets, effects;
   let selectedType, selectedPad, lastTime = 0;
-  let nextEnemyId = 1, kick=0;
+  let nextEnemyId = 1, kick=0, beams=[];
   let smokes=[],flashes=[],soundOn=true,audio=null;
   const unlockAt={machinegun:0,cannon:1,missile:3,radar:4};
   const unlocked=type=>state.wave>=unlockAt[type];
@@ -93,7 +93,7 @@
     towers = []; enemies = []; bullets = []; effects = [];
     selectedType = "machinegun";
     selectedPad = -1;
-    draftForWave=0;strikeAiming=false;strikeRings=[];combatTexts=[];kick=0;smokes=[];flashes=[];
+    draftForWave=0;strikeAiming=false;strikeRings=[];combatTexts=[];kick=0;smokes=[];flashes=[];beams=[];
     $("draft-modal").classList.add("hidden");
     $("strike-hint").classList.add("hidden");
     $("evolution-modal").classList.add("hidden");
@@ -119,7 +119,7 @@
       cooldown:0, angle:-Math.PI/2,
       pierce:state.globalPierce, critical:0, blast:0,
       chain:false, slow:false, mods:[],
-      evolution:null, kills:0,spin:0,recoil:0,glow:0
+      evolution:null, branch:null, awakened:false, kills:0,spin:0,recoil:0,glow:0
     };
   }
 
@@ -358,8 +358,38 @@
     t.angle=Math.atan2(target.y-t.y,target.x-t.x);
     const d=DEF[t.type];
     const damage=d.dmg*t.power;
+    if(t.type==="machinegun"&&(t.branch==="rail"||t.branch==="tesla")){
+      t.recoil=1;t.glow=.25;sfx("boom");
+      const targets=[target];
+      if(t.branch==="tesla"){
+        const max=t.awakened?8:t.mods.includes("spread")?6:3;
+        while(targets.length<max){
+          const last=targets[targets.length-1];
+          const next=enemies.filter(e=>e.alive&&!targets.includes(e)&&distance(e,last)<(t.awakened?125:90))
+            .sort((a,b)=>distance(a,last)-distance(b,last))[0];
+          if(!next)break;targets.push(next);
+        }
+      }else if(t.mods.includes("penetrate")){
+        const dx=target.x-t.x,dy=target.y-t.y,length=Math.hypot(dx,dy)||1;
+        enemies.forEach(e=>{
+          if(e===target||!e.alive)return;
+          const along=((e.x-t.x)*dx+(e.y-t.y)*dy)/length;
+          const off=Math.abs((e.x-t.x)*dy-(e.y-t.y)*dx)/length;
+          if(along>0&&along<t.range&&off<20)targets.push(e);
+        });
+      }
+      let px=t.x,py=t.y;
+      targets.forEach((e,i)=>{
+        beams.push({x1:px,y1:py,x2:e.x,y2:e.y,life:t.awakened?.28:.19,color:t.branch==="rail"?"#71e7ff":"#bca0ff",width:t.branch==="rail"?7:4});
+        hurt(e,damage*(t.branch==="tesla"?Math.max(.45,1-i*.15):1),t);
+        px=e.x;py=e.y;
+      });
+      if(t.blast>0&&t.branch==="rail")enemies.forEach(e=>{if(e.alive&&distance(e,target)<t.blast)hurt(e,damage*.4,t)});
+      if(t.awakened){burst(target.x,target.y,"#fff0ad",22);kick=5;}
+      return;
+    }
     t.recoil=1;t.glow=.16;t.spin+=1;
-    const count=t.type==="machinegun"?(t.level>=5?4:t.level>=3?2:1):1;
+    const count=t.type==="machinegun"?(t.awakened?8:t.branch==="gatling"?4:t.level>=5?4:t.level>=3?2:1):1;
     if(t.type!=="machinegun"||Math.random()<.2)sfx(t.type==="machinegun"?"shot":"boom");
     for(let shot=0;shot<count;shot++){
     const angle=t.angle+(shot-(count-1)/2)*.065;
@@ -445,6 +475,7 @@
     effects=effects.filter(p=>p.life>0);
     smokes.forEach(p=>{p.life-=dt;p.r+=dt*17;p.y-=dt*7;});smokes=smokes.filter(p=>p.life>0);
     flashes.forEach(p=>p.life-=dt);flashes=flashes.filter(p=>p.life>0);
+    beams.forEach(p=>p.life-=dt);beams=beams.filter(p=>p.life>0);
     towers.forEach(t=>{t.recoil=Math.max(0,t.recoil-dt*8);t.glow=Math.max(0,t.glow-dt);});
     kick=Math.max(0,kick-dt*17);
   }
@@ -458,7 +489,41 @@
     return available[0];
   }
 
+  const BRANCHES=[
+    {id:"gatling",name:"ガトリングストーム",icon:"🔥",tag:"弾幕・大群殲滅",desc:"銃身4本・高速連射。画面を弾丸で埋め尽くす。",color:"#ffbb57"},
+    {id:"rail",name:"レールガン",icon:"🎯",tag:"超火力・装甲貫通",desc:"巨大な電磁砲。重戦車を貫通ビームで撃ち抜く。",color:"#7be3ff"},
+    {id:"tesla",name:"テスラチェーン",icon:"⚡",tag:"連鎖電撃・集団制圧",desc:"敵から敵に電撃が伝播。密集部隊をまとめて攻撃。",color:"#b5a5ff"}
+  ];
+  const PERKS={
+    gatling:[
+      {id:"ricochet",name:"跳弾",desc:"弾丸が別の敵に跳ね返る。",symbol:"↗"},
+      {id:"barrage",name:"弾幕増幅",desc:"連射数をさらに増やす。",symbol:"✹"},
+      {id:"explosive",name:"炸裂弾",desc:"命中時、小爆発を起こす。",symbol:"💥"}
+    ],
+    rail:[
+      {id:"penetrate",name:"超貫通",desc:"射線上の複数の敵を貫く。",symbol:"➤"},
+      {id:"overcharge",name:"過充電",desc:"ビーム威力がさらに倍増。",symbol:"⚡"},
+      {id:"shockwave",name:"衝撃波",desc:"着弾地点に範囲爆発。",symbol:"◉"}
+    ],
+    tesla:[
+      {id:"conduction",name:"感電",desc:"電撃で敵を減速させる。",symbol:"⚡"},
+      {id:"spread",name:"広域伝播",desc:"電撃がさらに遠くまで連鎖。",symbol:"⌁"},
+      {id:"storm",name:"雷雲",desc:"攻撃速度が大きく上昇。",symbol:"☁"}
+    ]
+  };
   function applyMod(t,m) {
+    if(t.type==="machinegun"&&t.branch){
+      if(m.id==="ricochet")t.chain=true;
+      if(m.id==="barrage")t.interval*=.68;
+      if(m.id==="explosive")t.blast+=19;
+      if(m.id==="penetrate")t.pierce=1;
+      if(m.id==="overcharge")t.power*=1.8;
+      if(m.id==="shockwave")t.blast+=38;
+      if(m.id==="conduction")t.slow=true;
+      if(m.id==="spread")t.range*=1.4;
+      if(m.id==="storm")t.interval*=.65;
+      t.mods.push(m.id);return;
+    }
     if(m.id==="power")t.power*=1.3;
     if(m.id==="rapid")t.interval*=.8;
     if(m.id==="range")t.range*=1.25;
@@ -469,101 +534,91 @@
     if(m.id==="slow")t.slow=true;
     t.mods.push(m.id);
   }
-
   function checkEvolution(t) {
-    const has=(...ids)=>ids.every(id=>t.mods.includes(id));
-
-    if(t.type==="machinegun"&&has("rapid","chain")){
-      t.evolution="ヴァルカン・オーバードライブ";
-      t.interval*=.65;
-      t.power*=1.35;
+    if(t.type==="machinegun"&&t.branch){
+      const has=(a,b)=>t.mods.includes(a)&&t.mods.includes(b);
+      let awakening=null;
+      if(t.branch==="gatling"&&has("ricochet","barrage"))awakening="インフィニティ・ヴァルカン";
+      if(t.branch==="rail"&&has("penetrate","overcharge"))awakening="ゼロ・ディスタンス";
+      if(t.branch==="tesla"&&has("conduction","spread"))awakening="サンダーゴッド";
+      if(awakening&&!t.awakened){
+        t.awakened=true;state.awakenings=(state.awakenings||0)+1;t.evolution=awakening;t.power*=1.5;t.interval*=.65;
+        kick=8;sfx("unlock");
+        for(let n=0;n<8;n++)burst(t.x,t.y,n%2?"#ffe5a0":"#7deeff",35);
+        strikeRings.push({x:t.x,y:t.y,radius:2,life:1});
+        combatTexts.push({x:t.x,y:t.y-49,text:"LEGENDARY AWAKENING!",life:2.8,color:"#ffe489"});
+        notice("★ LEGENDARY AWAKENING： "+awakening+"！");
+      }
+      return;
     }
-    if(t.type==="cannon"&&has("blast","power")){
-      t.evolution="クラスター・デストロイヤー";
-      t.blast+=33;
-      t.power*=1.35;
-    }
-    if(t.evolution){
-      burst(t.x,t.y,"#ffe27b",35);
-      notice("LEGENDARY EVOLUTION！");
+    if(t.type==="cannon"&&t.mods.includes("blast")&&t.mods.includes("power")&&!t.evolution){
+      t.evolution="クラスター・デストロイヤー";t.blast+=33;t.power*=1.35;
     }
   }
-
   function evolutionChoices(t) {
+    if(t.type==="machinegun"&&t.branch){
+      const list=PERKS[t.branch].filter(m=>!t.mods.includes(m.id));
+      return list.sort(()=>Math.random()-.5).slice(0,3);
+    }
     let available=MODS.filter(m=>!t.mods.includes(m.id));
-    if(t.type==="radar")
-      available=available.filter(m=>
-        ["range","rapid","slow","blast"].includes(m.id)
-      );
-
-    const wanted=t.type==="machinegun"
-      ?["rapid","chain"]:t.type==="cannon"
-      ?["blast","power"]:[];
-
-    const guaranteed=available.find(m=>wanted.includes(m.id));
-    available=available.sort(()=>Math.random()-.5);
-
-    const result=available.slice(0,3);
-    if(guaranteed&&!result.some(m=>m.id===guaranteed.id))
-      result[2]=guaranteed;
-    return result;
+    if(t.type==="radar")available=available.filter(m=>["range","rapid","slow","blast"].includes(m.id));
+    return available.sort(()=>Math.random()-.5).slice(0,3);
   }
-
   function openEvolution() {
     if(state.choosing||state.finished)return;
-
-    const available=towers.filter(t=>t.mods.length<3);
+    const available=towers.filter(t=>t.type==="machinegun"?!t.branch||t.mods.length<2:t.mods.length<3);
     if(!available.length)return;
-
-    state.choosing=true;
-    state.paused=true;
-
+    state.choosing=true;state.paused=true;
     const t=available.sort((a,b)=>b.level-a.level)[0];
     selectedPad=t.pad;
     $("evolution-modal").classList.remove("hidden");
-
+    const title=$("evolution-title"),intro=$("evolution-description"),holder=$("evolution-options");
     const drawChoices=()=>{
-      const holder=$("evolution-options");
       holder.innerHTML="";
-
-      evolutionChoices(t).forEach(m=>{
+      const branchChoice=t.type==="machinegun"&&!t.branch;
+      title.textContent=branchChoice?"兵器進化：3つの運命":t.branch?"専用能力の選択":"兵器改造";
+      intro.textContent=branchChoice?"攻撃方法が劇的に変化する進化先を選べ！":
+        t.branch?"能力を組み合わせて隠された覚醒を発見しよう！":"新しい能力を1つ選択してください";
+      const options=branchChoice?BRANCHES:evolutionChoices(t);
+      options.forEach(m=>{
         const button=document.createElement("button");
-        button.className="evolution-choice";
-        const strong=document.createElement("strong");
-        strong.textContent="⚙ "+m.name;
-        const desc=document.createElement("span");
-        desc.textContent=m.desc;
-        button.append(strong,desc);
-
+        button.className="evolution-choice "+(branchChoice?"branch-choice":"perk-choice");
+        const symbol=document.createElement("span");symbol.className="choice-symbol";
+        symbol.textContent=m.icon||m.symbol||"✦";
+        const wrap=document.createElement("span");wrap.className="choice-copy";
+        const strong=document.createElement("strong");strong.textContent=m.name;
+        const desc=document.createElement("span");desc.textContent=m.desc;
+        wrap.append(strong,desc);
+        if(m.tag){const tag=document.createElement("small");tag.textContent=m.tag;wrap.append(tag);}
+        button.append(symbol,wrap);
         button.onclick=()=>{
-          applyMod(t,m);
-          if(!t.evolution)checkEvolution(t);
-          state.xp-=state.xpNeed;
-          state.upgrades++;
-          state.xpNeed=state.upgrades<3?80:120;
-          state.choosing=false;
-          state.paused=false;
+          if(branchChoice){
+            t.branch=m.id;t.mods=[];t.evolution=null;
+            if(m.id==="gatling"){t.interval*=.55;t.power*=1.1;}
+            if(m.id==="rail"){t.interval*=3;t.power*=4;t.pierce=1;}
+            if(m.id==="tesla"){t.interval*=1.35;t.power*=.95;t.chain=true;}
+            t.glow=.5;kick=5;sfx("unlock");
+            combatTexts.push({x:t.x,y:t.y-40,text:m.name+"!",life:2,color:m.color});
+          }else{applyMod(t,m);checkEvolution(t);}
+          state.xp=Math.max(0,state.xp-state.xpNeed);
+          state.upgrades++;state.xpNeed=state.upgrades<3?80:120;
+          state.choosing=false;state.paused=false;
           $("evolution-modal").classList.add("hidden");
-          notice("改造完了："+m.name);
+          if(!t.awakened)notice((branchChoice?"進化完了：":"能力獲得：")+m.name);
           updateUI();
         };
         holder.appendChild(button);
       });
+      $("reroll-button").style.display=branchChoice?"none":"block";
     };
-
     $("reroll-button").onclick=()=>{
       if(state.rerolls<=0)return;
-      state.rerolls--;
-      drawChoices();
-      $("reroll-button").textContent=
-        "候補を引き直す（残り"+state.rerolls+"）";
+      state.rerolls--;drawChoices();
+      $("reroll-button").textContent="候補を引き直す（残り"+state.rerolls+"）";
     };
-
-    $("reroll-button").textContent=
-      "候補を引き直す（残り"+state.rerolls+"）";
+    $("reroll-button").textContent="候補を引き直す（残り"+state.rerolls+"）";
     drawChoices();
   }
-
   function finish(win) {
     state.finished=true;state.active=false;
     state.paused=true;
@@ -775,12 +830,15 @@
     ctx.save();ctx.rotate(t.angle+Math.PI/2);ctx.translate(0,t.recoil*7);
     if(t.type==="machinegun"){
       rounded(-12,-12,24,20,4,"#214440");
-      const barrels=t.level>=5?4:t.level>=3?2:1;
-      for(let k=0;k<barrels;k++){const x=(k-(barrels-1)/2)*7;
+      const barrels=t.awakened&&t.branch==="gatling"?8:t.branch==="gatling"?4:t.level>=5?4:t.level>=3?2:1;
+      for(let k=0;k<barrels;k++){const x=(k-(barrels-1)/2)*(barrels>=8?4:7);
         rounded(x-2,-33,4,29,1,"#d4e0c7");circle(x,-33,3,"#10282b");
       }
       if(t.glow>0){circle(0,-35,8+t.glow*30,"#ffe49a");circle(0,-35,4,"#ffb43d");}
-      rounded(-8,-11,16,13,3,"#91b8a3");
+      rounded(-8,-11,16,13,3,t.branch==="rail"?"#77d6ec":t.branch==="tesla"?"#b7a4ff":"#91b8a3");
+      if(t.branch==="rail"){rounded(-6,-45,12,28,2,"#69c7ed");circle(0,-45,6,"#b6faff");}
+      if(t.branch==="tesla"){ctx.strokeStyle="#bcaaff";ctx.lineWidth=3;
+        ctx.beginPath();ctx.arc(0,-18,17,Math.PI*1.05,Math.PI*1.95);ctx.stroke();circle(0,-33,5,"#e4d6ff");}
     }else if(t.type==="cannon"){
       rounded(-8,-12,16,28,4,"#243d37");
       rounded(-5,-38,10,35,2,"#d5c4a0");
@@ -802,8 +860,8 @@
     }
     ctx.restore();
     ctx.strokeStyle=color;ctx.lineWidth=1.7;ctx.strokeRect(-20,-21,40,38);
-    if(t.evolution){
-      ctx.strokeStyle="#ffd774";ctx.lineWidth=3;
+    if(t.evolution||t.branch){
+      ctx.strokeStyle=t.awakened?"#ffdd75":t.branch==="tesla"?"#ae9bff":t.branch==="rail"?"#72eaff":"#fcb85d";ctx.lineWidth=3;
       ctx.beginPath();ctx.arc(0,0,25,0,Math.PI*2);ctx.stroke();
       circle(18,-17,5,"#ffd774");
     }
@@ -902,6 +960,8 @@
       ctx.strokeText(p.text,p.x,p.y);ctx.fillText(p.text,p.x,p.y);
       ctx.restore();
     });
+    beams.forEach(b=>{ctx.save();ctx.globalAlpha=Math.min(1,b.life*5);ctx.shadowColor=b.color;ctx.shadowBlur=18;
+      line(b.x1,b.y1,b.x2,b.y2,b.color,b.width);line(b.x1,b.y1,b.x2,b.y2,"#fff",Math.max(1,b.width*.3));ctx.restore();});
     smokes.forEach(p=>{ctx.save();ctx.globalAlpha=Math.max(0,Math.min(.45,p.life*.5));
       circle(p.x,p.y,p.r,"#e0d6bf");ctx.restore();});
     flashes.forEach(p=>{ctx.save();ctx.globalAlpha=Math.min(1,p.life*8);
@@ -936,10 +996,21 @@
       card.disabled=!available;
     });
     const current=towerAt(selectedPad);
+    const evo=current&&current.branch;
+    $("awakening-count").textContent=(state.awakenings||0)+" / 3";
+    $("awakening-clue").textContent=evo?
+      (current.awakened?"覚醒済： "+current.evolution:
+      current.branch==="gatling"?"ヴァルカン：跳弾＋弾幕増幅で覚醒":
+      current.branch==="rail"?"レールガン：超貫通＋過充電で覚醒":
+      "テスラ：感電＋広域伝播で覚醒"):
+      "機関銃を進化させると覚醒レシピのヒントが表示される。";
     $("upgrade-next").textContent=current?
       DEF[current.type].name+" Lv."+current.level+" → Lv."+(current.level+1):
       "機関銃 Lv.1 → Lv.3 二連装 → Lv.5 四連装";
-    $("upgrade-detail").textContent=current?
+    $("upgrade-detail").textContent=current&&current.branch?
+      ("進化形態： "+BRANCHES.find(b=>b.id===current.branch).name+
+       (current.awakened?" / ★覚醒済":" / 能力 "+current.mods.length+"/2")):
+      current?
       (current.type==="machinegun"?"Lv.3で二連装、Lv.5で四連装！銃身と弾幕が増える":"強化で火力アップ、改造で特別な能力を獲得"):
       "兵器をタップすると次の成長を確認できます。";
     $("sound-button").textContent=soundOn?"♪":"×";
