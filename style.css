@@ -228,3 +228,20 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .panel-heading h2{color:#ddf9f0}
 .start-button{background:linear-gradient(115deg,#a9f1c6,#78cbad);color:#102c2c;box-shadow:0 4px 0 #305e51}
 .intel-box{background:linear-gradient(115deg,#173338,#0d2429);border-color:#4c8b79;border-left-color:#78e6b2}
+
+/* Ver 0.4 onboarding, clarity and juice */
+.guide-banner{display:grid;gap:6px;margin:10px 0 14px;padding:13px 14px;border:1px solid #9fe9b7;border-left:5px solid #bafa87;border-radius:12px;background:linear-gradient(100deg,#21463a,#12322f);box-shadow:0 0 22px #87d9a523;animation:guideBreath 2.3s infinite alternate}
+.guide-banner strong{color:#d6ffb8;font-size:12px;letter-spacing:1px}
+.guide-banner span{font-size:13px;font-weight:700;color:#eaf9e4;line-height:1.45}
+@keyframes guideBreath{to{box-shadow:0 0 22px #87ff8d56;border-color:#d8ffa3}}
+.tower-desc{font-size:9px;color:#acd4ca;line-height:1.2;margin-top:4px;min-height:23px;display:block;text-align:center}
+.tower-card.locked{opacity:.55;filter:grayscale(.8);position:relative}
+.tower-card.locked:after{content:attr(data-unlock);position:absolute;inset:0;display:grid;place-content:center;background:#08191bcf;color:#f5e7ac;font-size:13px;font-weight:900;white-space:pre-line;border-radius:7px}
+.tower-card.unlocked{animation:unlockPulse .65s ease-out 3}
+@keyframes unlockPulse{50%{transform:scale(1.06);box-shadow:0 0 27px #f8cd70}}
+.upgrade-preview{margin:11px 0;display:grid;gap:5px;background:linear-gradient(105deg,#4a3826,#22392e);padding:11px 12px;border-radius:9px;border:1px solid #b38b54}
+.upgrade-preview strong{font-size:12px;color:#ffdf9b}
+.upgrade-preview span{font-size:11px;color:#d7e3d1}
+.battle-combo{position:absolute;left:50%;top:33%;transform:translateX(-50%) rotate(-4deg);z-index:4;font:900 37px Rajdhani,sans-serif;letter-spacing:2px;white-space:nowrap;color:#fff0a1;text-shadow:0 2px 0 #963d1e,0 4px 0 #672e1d,0 0 24px #ff9a49;pointer-events:none;animation:comboPop .22s ease-out}
+@keyframes comboPop{from{transform:translateX(-50%) scale(.5) rotate(-10deg);opacity:.3}to{transform:translateX(-50%) scale(1) rotate(-4deg);opacity:1}}
+#sound-button{font-size:16px}
