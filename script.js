@@ -701,8 +701,9 @@
       }
     }
 
-    if(state.xp>=state.xpNeed&&
-       towers.some(t=>t.mods.length<3)){
+    if(!state.active&&state.xp>=state.xpNeed&&
+       towers.some(t=>t.type==="machinegun"?
+         (!t.branch||t.mods.length<2):t.mods.length<3)){
       openEvolution();
     }
 
