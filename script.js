@@ -48,6 +48,7 @@
   let selectedType, selectedPad, lastTime = 0;
   let nextEnemyId = 1, kick=0, beams=[];
   let smokes=[],flashes=[],soundOn=true,audio=null;
+  let shockwaves=[],screenFlash=0,combo=0,comboClock=0;
   const unlockAt={machinegun:0,cannon:1,missile:3,radar:4};
   const unlocked=type=>state.wave>=unlockAt[type];
   function sfx(kind){
@@ -93,7 +94,7 @@
     towers = []; enemies = []; bullets = []; effects = [];
     selectedType = "machinegun";
     selectedPad = -1;
-    draftForWave=0;strikeAiming=false;strikeRings=[];combatTexts=[];kick=0;smokes=[];flashes=[];beams=[];
+    draftForWave=0;strikeAiming=false;strikeRings=[];combatTexts=[];kick=0;smokes=[];flashes=[];beams=[];shockwaves=[];screenFlash=0;combo=0;comboClock=0;
     $("draft-modal").classList.add("hidden");
     $("strike-hint").classList.add("hidden");
     $("evolution-modal").classList.add("hidden");
@@ -241,8 +242,8 @@
   }
   function startWave() {
     if(state.active||state.finished||state.choosing)return;
-    if(state.wave===0){launchWave(1);updateUI();return;}
-    tacticalDraft(state.wave+1);
+    if(!towers.length){notice("先に光るマスをタップして機関銃を配置しよう！");return;}
+    launchWave(state.wave+1);updateUI();
   }
   function useAirstrike(x,y) {
     if(state.strike<100 || !state.active || state.paused)return;
@@ -337,6 +338,16 @@
       e.alive=false;
       state.money+=Math.round(e.reward*state.rewardRate);
       state.kills++;if(e.elite)state.eliteKills++;
+      combo=comboClock>0?combo+1:1;comboClock=3.6;
+      if([5,10,20,40].includes(combo)){
+        const bonus=combo*2;state.money+=bonus;
+        combatTexts.push({x:W/2,y:70,text:combo+" COMBO! +"+bonus+"G",life:1.5,color:"#ffe17c"});
+        screenFlash=Math.max(screenFlash,.15);sfx("unlock");
+      }
+      if(e.elite||e.kind==="boss"){
+        shockwaves.push({x:e.x,y:e.y,r:8,max:e.kind==="boss"?115:65,life:.65,color:"#ffc368"});
+        screenFlash=Math.max(screenFlash,e.kind==="boss"?.48:.20);kick=Math.max(kick,e.kind==="boss"?10:5);
+      }
       state.strike=Math.min(100,state.strike+(e.kind==="boss"?38:e.elite?12:4));
       state.xp+=e.kind==="boss"?20:4;
       source.kills++;
@@ -360,6 +371,7 @@
     const damage=d.dmg*t.power;
     if(t.type==="machinegun"&&(t.branch==="rail"||t.branch==="tesla")){
       t.recoil=1;t.glow=.25;sfx("boom");
+      shockwaves.push({x:target.x,y:target.y,r:4,max:t.branch==="rail"?40:25,life:.3,color:t.branch==="rail"?"#7cf5ff":"#d2abff"});
       const targets=[target];
       if(t.branch==="tesla"){
         const max=t.awakened?8:t.mods.includes("spread")?6:3;
@@ -380,12 +392,12 @@
       }
       let px=t.x,py=t.y;
       targets.forEach((e,i)=>{
-        beams.push({x1:px,y1:py,x2:e.x,y2:e.y,life:t.awakened?.28:.19,color:t.branch==="rail"?"#71e7ff":"#bca0ff",width:t.branch==="rail"?7:4});
+        beams.push({x1:px,y1:py,x2:e.x,y2:e.y,life:t.awakened?.50:.32,max:t.awakened?.50:.32,kind:t.branch,color:t.branch==="rail"?"#71e7ff":"#bca0ff",width:t.branch==="rail"?(t.awakened?19:12):(t.awakened?9:6)});
         hurt(e,damage*(t.branch==="tesla"?Math.max(.45,1-i*.15):1),t);
         px=e.x;py=e.y;
       });
       if(t.blast>0&&t.branch==="rail")enemies.forEach(e=>{if(e.alive&&distance(e,target)<t.blast)hurt(e,damage*.4,t)});
-      if(t.awakened){burst(target.x,target.y,"#fff0ad",22);kick=5;}
+      if(t.awakened){burst(target.x,target.y,"#fff0ad",45);kick=8;screenFlash=.3;}
       return;
     }
     t.recoil=1;t.glow=.16;t.spin+=1;
@@ -402,6 +414,13 @@
       color:d.color,alive:true
     });}
     flashes.push({x:t.x+Math.cos(t.angle)*30,y:t.y+Math.sin(t.angle)*30,life:.14});
+    if(t.type==="machinegun"&&t.branch==="gatling"){
+      for(let n=0;n<(t.awakened?8:4);n++){
+        const jitter=(Math.random()-.5)*(t.awakened?34:19);
+        beams.push({x1:t.x,y1:t.y,x2:target.x+jitter,y2:target.y+jitter,life:.11,max:.11,kind:"tracer",color:n%2?"#ffbb45":"#ffed9b",width:t.awakened?3:2});
+      }
+      if(t.awakened&&Math.random()<.3){shockwaves.push({x:target.x,y:target.y,r:4,max:34,life:.22,color:"#ffb54e"});kick=4;}
+    }
     if(t.type!=="machinegun"){kick=Math.max(kick,2.5);
       for(let n=0;n<5;n++)smokes.push({x:t.x+(Math.random()-.5)*24,y:t.y+(Math.random()-.5)*24,r:3+Math.random()*6,life:.4+Math.random()*.5});
     }
@@ -473,6 +492,10 @@
       p.vx*=.95;p.vy*=.95;
     });
     effects=effects.filter(p=>p.life>0);
+    shockwaves.forEach(p=>{p.life-=dt;p.r+=(p.max-p.r)*Math.min(1,dt*7);});
+    shockwaves=shockwaves.filter(p=>p.life>0);
+    screenFlash=Math.max(0,screenFlash-dt*1.7);
+    if(comboClock>0){comboClock-=dt;if(comboClock<=0)combo=0;}
     smokes.forEach(p=>{p.life-=dt;p.r+=dt*17;p.y-=dt*7;});smokes=smokes.filter(p=>p.life>0);
     flashes.forEach(p=>p.life-=dt);flashes=flashes.filter(p=>p.life>0);
     beams.forEach(p=>p.life-=dt);beams=beams.filter(p=>p.life>0);
@@ -546,6 +569,8 @@
         kick=8;sfx("unlock");
         for(let n=0;n<8;n++)burst(t.x,t.y,n%2?"#ffe5a0":"#7deeff",35);
         strikeRings.push({x:t.x,y:t.y,radius:2,life:1});
+        shockwaves.push({x:t.x,y:t.y,r:8,max:W*.8,life:1.4,color:t.branch==="rail"?"#74eaff":t.branch==="tesla"?"#a99aff":"#ffcc63"});
+        screenFlash=.95;
         combatTexts.push({x:t.x,y:t.y-49,text:"LEGENDARY AWAKENING!",life:2.8,color:"#ffe489"});
         notice("★ LEGENDARY AWAKENING： "+awakening+"！");
       }
@@ -569,7 +594,8 @@
     const available=towers.filter(t=>t.type==="machinegun"?!t.branch||t.mods.length<2:t.mods.length<3);
     if(!available.length)return;
     state.choosing=true;state.paused=true;
-    const t=available.sort((a,b)=>b.level-a.level)[0];
+    const selected=towerAt(selectedPad);
+    const t=selected&&available.includes(selected)?selected:available.sort((a,b)=>b.level-a.level)[0];
     selectedPad=t.pad;
     $("evolution-modal").classList.remove("hidden");
     const title=$("evolution-title"),intro=$("evolution-description"),holder=$("evolution-options");
@@ -689,6 +715,7 @@
 
     if(!state.queue.length&&!enemies.length){
       state.active=false;
+      combo=0;comboClock=0;
       state.money+=50;
       if(state.hp===state.maxHp)state.money+=20;
       state.xp+=15;
@@ -961,8 +988,29 @@
       ctx.strokeText(p.text,p.x,p.y);ctx.fillText(p.text,p.x,p.y);
       ctx.restore();
     });
-    beams.forEach(b=>{ctx.save();ctx.globalAlpha=Math.min(1,b.life*5);ctx.shadowColor=b.color;ctx.shadowBlur=18;
-      line(b.x1,b.y1,b.x2,b.y2,b.color,b.width);line(b.x1,b.y1,b.x2,b.y2,"#fff",Math.max(1,b.width*.3));ctx.restore();});
+    beams.forEach(b=>{
+      ctx.save();const alpha=Math.min(1,b.life/Math.max(.01,b.max||.2));
+      ctx.globalAlpha=alpha;ctx.lineCap="round";
+      if(b.kind==="tesla"){
+        const dx=b.x2-b.x1,dy=b.y2-b.y1,len=Math.hypot(dx,dy)||1,nx=-dy/len,ny=dx/len;
+        ctx.beginPath();ctx.moveTo(b.x1,b.y1);
+        for(let i=1;i<7;i++){const f=i/7,off=Math.sin(i*23+b.x1*.13+b.y2*.17+performance.now()*.08)*11;
+          ctx.lineTo(b.x1+dx*f+nx*off,b.y1+dy*f+ny*off);}
+        ctx.lineTo(b.x2,b.y2);ctx.shadowColor="#d4a5ff";ctx.shadowBlur=27;
+        ctx.strokeStyle="#9b6afa";ctx.lineWidth=b.width*2.5;ctx.stroke();
+        ctx.strokeStyle="#f4e9ff";ctx.lineWidth=b.width*.7;ctx.stroke();
+      }else{
+        ctx.shadowColor=b.color;ctx.shadowBlur=b.kind==="rail"?45:18;
+        line(b.x1,b.y1,b.x2,b.y2,b.color,b.width*2.7);
+        line(b.x1,b.y1,b.x2,b.y2,b.kind==="tracer"?"#fff7d5":"#ffffff",Math.max(1,b.width*.54));
+        if(b.kind==="rail")circle(b.x2,b.y2,b.width*1.5,"#b7faff");
+      }ctx.restore();
+    });
+    shockwaves.forEach(p=>{ctx.save();ctx.globalAlpha=Math.min(.85,p.life*1.6);
+      ctx.strokeStyle=p.color;ctx.lineWidth=Math.max(1,p.life*9);
+      ctx.shadowColor=p.color;ctx.shadowBlur=20;
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.stroke();ctx.restore();
+    });
     smokes.forEach(p=>{ctx.save();ctx.globalAlpha=Math.max(0,Math.min(.45,p.life*.5));
       circle(p.x,p.y,p.r,"#e0d6bf");ctx.restore();});
     flashes.forEach(p=>{ctx.save();ctx.globalAlpha=Math.min(1,p.life*8);
@@ -983,7 +1031,12 @@
     ctx.fillStyle="#e4fff0";ctx.font="bold 10px Rajdhani,sans-serif";
     ctx.textAlign="center";ctx.fillText("HQ",364,155);
     ctx.fillStyle="#b2ffe2";ctx.fillRect(353,163,22,3);
-    ctx.restore();ctx.restore();
+    ctx.restore();
+    if(screenFlash>0){ctx.save();ctx.globalAlpha=Math.min(.45,screenFlash*.4);ctx.fillStyle="#fff7da";ctx.fillRect(0,0,W,H);ctx.restore();}
+    if(comboClock>0&&combo>=3){ctx.save();ctx.textAlign="center";ctx.font="900 23px Rajdhani,sans-serif";
+      ctx.strokeStyle="#102529";ctx.lineWidth=5;ctx.strokeText(combo+" COMBO",W/2,44);
+      ctx.fillStyle=combo>=20?"#ffd45b":"#b9fff0";ctx.fillText(combo+" COMBO",W/2,44);ctx.restore();}
+    ctx.restore();
   }
 
   function updateUI() {
@@ -1024,7 +1077,7 @@
       "WAVE "+(state.wave+1)+"： "+profile.label+" / 約"+(profile.unitCount+(profile.boss?1:0))+"体";
     $("build-summary").textContent=state.usedTactics.length?
       "獲得戦術 "+state.usedTactics.length+"個 ｜ "+state.usedTactics.slice(-2).join("・"):
-      "各ウェーブ直前にランダム3択の永続戦術を獲得";
+      "敵を倒して経験値をため、兵器を進化させよう。進化で攻撃方法が変わる！";
     const strike=$("airstrike-button");
     strike.disabled=state.strike<100||!state.active||state.paused||state.finished;
     strike.classList.toggle("ready",state.strike>=100);
@@ -1055,7 +1108,7 @@
 
     $("tower-info").textContent=t?
       DEF[t.type].name+" Lv."+t.level+
-      " ｜ 改造 "+t.mods.length+"/3"+
+      " ｜ 改造 "+t.mods.length+"/"+(t.type==="machinegun"?2:3)+
       (t.evolution?" ｜ ★ "+t.evolution:""):
       "配置可能なマスをタップしてください";
   }
