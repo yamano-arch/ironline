@@ -682,6 +682,10 @@
           state.choosing=false;state.paused=false;
           $("evolution-modal").classList.add("hidden");
           if(!t.awakened)notice((branchChoice?"進化完了：":"能力獲得：")+m.name);
+          if(!state.active){
+            notice("進化完了！ 画面上の ▶ WAVE "+(state.wave+1)+" の作戦へ で進もう");
+            document.querySelector(".battle-area").scrollIntoView({behavior:"smooth",block:"start"});
+          }
           updateUI();
         };
         holder.appendChild(button);
@@ -1119,7 +1123,13 @@
   }
 
   function updateUI() {
-    $("base-hp").textContent=state.hp+" / "+state.maxHp;
+    const nextButton=$("quick-next-wave");
+    if(nextButton){
+      const showNext=state.wave>0&&!state.active&&!state.choosing&&!state.finished;
+      nextButton.classList.toggle("hidden",!showNext);
+      if(showNext)nextButton.textContent="▶ WAVE "+(state.wave+1)+" の作戦へ  /  タップして進む";
+    }
+        $("base-hp").textContent=state.hp+" / "+state.maxHp;
     $("credits").textContent=state.money+" G";
     guide();
     document.querySelectorAll(".tower-card").forEach(card=>{
@@ -1231,7 +1241,13 @@
     notice(strikeAiming?"✈ 爆撃したい地点をタップ！":"爆撃指定を解除");
     updateUI();
   };
-  $("start-wave").onclick=startWave;
+  const quickNext=document.createElement("button");
+  quickNext.id="quick-next-wave";
+  quickNext.type="button";
+  quickNext.className="quick-next-wave hidden";
+  quickNext.addEventListener("click",startWave);
+  document.querySelector(".battle-area").appendChild(quickNext);
+    $("start-wave").onclick=startWave;
   $("upgrade-button").onclick=upgradeTower;
   $("sell-button").onclick=sellTower;
   $("retry-button").onclick=reset;
