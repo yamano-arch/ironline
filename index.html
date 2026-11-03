@@ -13,7 +13,7 @@
     <div class="brand">
       <span class="brand-mark">◆</span>
       <span>IRONLINE</span>
-      <span class="version">ALPHA 0.1</span>
+      <span class="version">ALPHA 0.2</span>
     </div>
 
     <div class="mission-name">
@@ -57,6 +57,7 @@
       </div>
     </div>
 
+    <div id="strike-hint" class="strike-hint hidden">爆撃地点をマップで指定！</div>
     <div class="battle-bottombar">
       <span id="enemy-count">敵部隊：0</span>
       <span id="game-status">STANDBY</span>
@@ -98,6 +99,14 @@
       </button>
     </div>
 
+    <div class="tactical-panel">
+      <div class="intel-box">
+        <small>ENEMY INTELLIGENCE / 次の敵部隊</small>
+        <strong id="enemy-intel">偵察中…</strong>
+        <span id="build-summary">選択した戦術で部隊を強化しよう</span>
+      </div>
+      <button id="airstrike-button" class="airstrike-button" type="button" disabled>✈ 航空爆撃 <span id="strike-charge">50%</span></button>
+    </div>
     <div id="tower-info" class="tower-info">
       配置可能なマスをタップしてください
     </div>
@@ -112,6 +121,15 @@
     </button>
   </section>
 
+  <div id="draft-modal" class="modal hidden">
+    <div class="modal-content draft-content">
+      <div class="modal-eyebrow">TACTICAL BRIEFING / WAVE <span id="draft-wave">01</span></div>
+      <h2>出撃前の戦術選択</h2>
+      <p id="draft-intel">敵部隊の情報を確認して、今回の強化を1つ選ぼう。</p>
+      <div id="draft-options"></div>
+      <div class="draft-footnote">選んだ強化はこの作戦中ずっと有効。毎ウェーブ戦局が変わる。</div>
+    </div>
+  </div>
   <div id="evolution-modal" class="modal hidden">
     <div class="modal-content">
       <div class="modal-eyebrow">WEAPON MODIFICATION</div>
