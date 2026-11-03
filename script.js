@@ -212,17 +212,24 @@
     state.paused=true;
     $("draft-wave").textContent=String(n).padStart(2,"0");
     const p=waveProfile(n);
-    $("draft-intel").textContent=p.label+" / 推定"+(p.unitCount+(p.boss?1:0))+"体。戦術強化を1つ選んで出撃。";
+    $("draft-intel").textContent=p.label+" / 推定"+(p.unitCount+(p.boss?1:0))+"体。次の部隊に合わせて「資金・火力・支援」から作戦を選ぼう。";
     const holder=$("draft-options");
     holder.innerHTML="";
-    const pool=[...TACTICS].sort(()=>Math.random()-.5);
-    const options=pool.slice(0,3);
+    // Three different strategic roles, so the draft is a decision rather than three stat buffs.
+    const pools=[
+      TACTICS.filter(t=>t.tier==="ECONOMY"||t.tier==="DEFENSE"),
+      TACTICS.filter(t=>t.tier==="FIREPOWER"||t.tier==="ANTI-ARMOR"),
+      TACTICS.filter(t=>t.tier==="TACTICAL"||t.tier==="SUPPORT")
+    ];
+    const options=pools.map(pool=>pool[Math.floor(Math.random()*pool.length)]);
     options.forEach(card=>{
       const button=document.createElement("button");
       button.type="button";button.className="draft-option";
       const type=document.createElement("small"),head=document.createElement("strong"),desc=document.createElement("span");
       type.textContent=card.tier;head.textContent=card.name;desc.textContent=card.desc;
-      button.append(type,head,desc);
+      const impact=document.createElement("em");impact.className="draft-impact";
+      impact.textContent=card.tier==="ECONOMY"?"▶ 建設・増設ルート":card.tier==="DEFENSE"?"▶ 防衛持久ルート":card.tier==="FIREPOWER"?"▶ 火力殲滅ルート":card.tier==="ANTI-ARMOR"?"▶ 戦車迎撃ルート":card.tier==="TACTICAL"?"▶ 射程制圧ルート":"▶ 爆撃支援ルート";
+      button.append(type,head,desc,impact);
       button.onclick=()=>{
         card.apply();state.usedTactics.push(card.name.replace(/^[^ ]+ /,""));
         state.choosing=false;state.paused=false;
@@ -247,7 +254,8 @@
   function startWave() {
     if(state.active||state.finished||state.choosing)return;
     if(!towers.length){notice("先に光るマスをタップして機関銃を配置しよう！");return;}
-    launchWave(state.wave+1);updateUI();
+    if(state.wave===0){launchWave(1);updateUI();return;}
+    tacticalDraft(state.wave+1);
   }
   function useAirstrike(x,y) {
     if(state.strike<100 || !state.active || state.paused)return;
