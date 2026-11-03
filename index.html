@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0c161c">
   <title>IRONLINE — 渓谷防衛戦</title>
-  <link rel="stylesheet" href="./style.css?v=0.6">
+  <link rel="stylesheet" href="./style.css?v=0.7">
 </head>
 <body>
 <div id="ironline" class="game-shell">
@@ -13,7 +13,7 @@
     <div class="brand">
       <span class="brand-mark">◆</span>
       <span>IRONLINE</span>
-      <span class="version">ALPHA 0.6</span>
+      <span class="version">ALPHA 0.7</span>
     </div>
 
     <div class="mission-name">
@@ -58,6 +58,7 @@
       </div>
     </div>
 
+    <div id="wave-alert" class="wave-alert hidden">WAVE 01 // 敵部隊接近</div>
     <div id="strike-hint" class="strike-hint hidden">爆撃地点をマップで指定！</div>
     <div id="battle-combo" class="battle-combo hidden">0 COMBO</div>
     <div class="battle-bottombar">
@@ -102,6 +103,7 @@
       </button>
     </div>
 
+    <div class="evolution-meter"><div class="evolution-meter-top"><span>✦ WEAPON EVOLUTION</span><strong id="evolution-meter-value">0%</strong></div><div class="evolution-meter-track"><div id="evolution-progress"></div></div><small id="evolution-meter-label">敵を倒すと進化ゲージがたまる！</small></div>
     <div class="tactical-panel">
       <div class="intel-box">
         <small>ENEMY INTELLIGENCE / 次の敵部隊</small>
@@ -165,6 +167,6 @@
 </div>
 
 
-<script src="./script.js?v=0.6" defer></script>
+<script src="./script.js?v=0.7" defer></script>
 </body>
 </html>
