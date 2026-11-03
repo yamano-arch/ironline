@@ -77,7 +77,11 @@
     {id:"salvage",tier:"ECONOMY",name:"⚙ 戦場回収班",desc:"敵撃破報酬 +35%。撃破するほど資金が増える。",apply:()=>state.rewardRate*=1.35},
     {id:"bunker",tier:"DEFENSE",name:"🛡 緊急防壁",desc:"基地HPを5回復し、最大HPも2増加。",apply:()=>{state.maxHp+=2;state.hp=Math.min(state.maxHp,state.hp+5)}},
     {id:"airforce",tier:"SUPPORT",name:"✈ 航空優勢",desc:"爆撃ゲージ +50%。爆撃の威力も +25%。",apply:()=>{state.strike=Math.min(100,state.strike+50);state.strikePower*=1.25}},
-    {id:"armor",tier:"ANTI-ARMOR",name:"🔩 対装甲弾",desc:"全兵器に装甲貫通 +20%。戦車の突破を防ぐ。",apply:()=>{state.globalPierce+=.2;towers.forEach(t=>t.pierce+=.2)}}
+    {id:"armor",tier:"ANTI-ARMOR",name:"🔩 対装甲弾",desc:"全兵器に装甲貫通 +20%。戦車の突破を防ぐ。",apply:()=>{state.globalPierce+=.2;towers.forEach(t=>t.pierce+=.2)}},
+    {id:"bounty",tier:"ECONOMY",name:"💎 高額賞金作戦",desc:"このWAVEの敵HP +25%、撃破報酬2倍。危険を資金に変える。",apply:()=>{state.wavePlan="bounty"}},
+    {id:"mines",tier:"DEFENSE",name:"💣 峡谷地雷網",desc:"先頭6体に地雷が炸裂。開幕の突破を先に止める。",apply:()=>{state.wavePlan="mines"}},
+    {id:"barrage",tier:"FIREPOWER",name:"🚀 開幕ロケット斉射",desc:"先頭6体へ迎撃ロケット。HPを削ってから射線に入れる。",apply:()=>{state.wavePlan="barrage"}},
+    {id:"emp",tier:"SUPPORT",name:"⚡ 広域EMP妨害",desc:"先頭8体を長時間鈍足化。高速部隊への切り札。",apply:()=>{state.wavePlan="emp"}}
   ];
 
   function reset() {
@@ -217,11 +221,15 @@
     holder.innerHTML="";
     // Three different strategic roles, so the draft is a decision rather than three stat buffs.
     const pools=[
-      TACTICS.filter(t=>t.tier==="ECONOMY"||t.tier==="DEFENSE"),
-      TACTICS.filter(t=>t.tier==="FIREPOWER"||t.tier==="ANTI-ARMOR"),
-      TACTICS.filter(t=>t.tier==="TACTICAL"||t.tier==="SUPPORT")
+      TACTICS.filter(t=>["bounty","mines","warfund","bunker"].includes(t.id)),
+      TACTICS.filter(t=>["barrage","overclock","ammunition","armor"].includes(t.id)),
+      TACTICS.filter(t=>["emp","radial","airforce"].includes(t.id))
     ];
-    const options=pools.map(pool=>pool[Math.floor(Math.random()*pool.length)]);
+    // Every briefing features at least one battle-changing operation.
+    const special=["bounty","mines","barrage","emp"];
+    const forced=TACTICS.find(t=>t.id===special[(n-2)%special.length]);
+    const forcedLane=pools.findIndex(pool=>pool.includes(forced));
+    const options=pools.map((pool,i)=>i===forcedLane?forced:pool[Math.floor(Math.random()*pool.length)]);
     options.forEach(card=>{
       const button=document.createElement("button");
       button.type="button";button.className="draft-option";
@@ -243,8 +251,10 @@
   }
   function launchWave(n) {
     draftForWave=n;
+    if(n===1)state.wavePlan=null;
     state.wave=n;state.active=true;
     state.queue=waveKinds(n);
+    state.spawnedThisWave=0;
     state.spawnTimer=.5;state.paused=false;
     notice("WAVE "+n+" — "+waveProfile(n).label);
     missionBanner=2.25;screenFlash=.17;
@@ -707,7 +717,24 @@
     }
     state.spawnTimer-=dt;
     if(state.queue.length&&state.spawnTimer<=0){
-      enemies.push(spawnEnemy(state.queue.shift()));
+      const foe=spawnEnemy(state.queue.shift());
+      state.spawnedThisWave++;
+      if(state.wavePlan==="bounty"){foe.hp*=1.25;foe.maxHp*=1.25;foe.reward*=2;}
+      if(state.wavePlan==="emp"&&state.spawnedThisWave<=8){
+        foe.slowTime=5;
+        shockwaves.push({x:foe.x,y:foe.y,r:4,max:42,life:.65,color:"#79eaff"});
+      }
+      if(state.wavePlan==="mines"&&state.spawnedThisWave<=6){
+        foe.hp=Math.max(1,foe.hp-65);
+        burst(foe.x,foe.y,"#ffce6d",24);
+        shockwaves.push({x:foe.x,y:foe.y,r:5,max:54,life:.4,color:"#ffbf63"});
+      }
+      if(state.wavePlan==="barrage"&&state.spawnedThisWave<=6){
+        foe.hp=Math.max(1,foe.hp-95);
+        beams.push({x1:foe.x+80,y1:0,x2:foe.x,y2:foe.y,life:.35,max:.35,kind:"rail",color:"#ffba67",width:7});
+        burst(foe.x,foe.y,"#ffbb77",26);kick=3;
+      }
+      enemies.push(foe);
       state.spawnTimer=waveProfile(state.wave).rush?.28:waveProfile(state.wave).swarm?.32:.47;
     }
 
@@ -740,6 +767,7 @@
       state.money+=50;
       if(state.hp===state.maxHp)state.money+=20;
       state.xp+=15;
+      state.wavePlan=null;
       const newly=state.wave===1?"cannon":state.wave===3?"missile":state.wave===4?"radar":null;
       if(newly){notice("🎉 "+DEF[newly].name+" 解放！");sfx("unlock");
         const card=document.querySelector('[data-tower="'+newly+'"]');if(card)card.classList.add("unlocked");
