@@ -286,3 +286,9 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .evolution-meter small{color:#c4e6dc;font-size:10px;letter-spacing:.5px}
 .choice-role{display:block;color:#eff7d2!important;letter-spacing:0!important;font-size:10px!important;line-height:1.5!important;margin-top:3px}
 .recipe-hint{display:block;color:#ffda83!important;font-size:10px!important}
+
+/* 0.8: make the three strategic commitments visually scannable */
+.draft-impact{display:block;margin-top:9px;padding:6px 9px;border-left:3px solid #b5e27b;background:#142a2b;color:#e4f4c6;font-size:11px;font-style:normal;font-weight:800;letter-spacing:.03em}
+.draft-option{transition:background .15s,transform .15s}
+.draft-option:active{transform:scale(.985)}
+.draft-option:focus-visible{outline:3px solid #ffe18b;outline-offset:2px}
