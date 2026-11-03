@@ -236,7 +236,7 @@
       const type=document.createElement("small"),head=document.createElement("strong"),desc=document.createElement("span");
       type.textContent=card.tier;head.textContent=card.name;desc.textContent=card.desc;
       const impact=document.createElement("em");impact.className="draft-impact";
-      impact.textContent=card.tier==="ECONOMY"?"▶ 建設・増設ルート":card.tier==="DEFENSE"?"▶ 防衛持久ルート":card.tier==="FIREPOWER"?"▶ 火力殲滅ルート":card.tier==="ANTI-ARMOR"?"▶ 戦車迎撃ルート":card.tier==="TACTICAL"?"▶ 射程制圧ルート":"▶ 爆撃支援ルート";
+      impact.textContent=card.id==="bounty"?"⚠ このWAVE限定 / 高リスク高報酬":card.id==="mines"?"💣 このWAVE限定 / 開幕地雷":card.id==="barrage"?"🚀 このWAVE限定 / ロケット迎撃":card.id==="emp"?"⚡ このWAVE限定 / 行動妨害":card.tier==="ECONOMY"?"✓ 永続 / 資金確保":card.tier==="DEFENSE"?"✓ 永続 / 基地防衛":card.tier==="FIREPOWER"?"✓ 永続 / 火力強化":card.tier==="ANTI-ARMOR"?"✓ 永続 / 装甲対策":card.tier==="TACTICAL"?"✓ 永続 / 射程強化":"✓ 永続 / 爆撃強化";
       button.append(type,head,desc,impact);
       button.onclick=()=>{
         card.apply();state.operationName=card.name;state.usedTactics.push(card.name.replace(/^[^ ]+ /,""));
@@ -1160,7 +1160,7 @@
       "交戦中："+waveProfile(state.wave).label:
       "WAVE "+(state.wave+1)+"： "+profile.label+" / 約"+(profile.unitCount+(profile.boss?1:0))+"体";
     $("build-summary").textContent=state.usedTactics.length?
-      "獲得戦術 "+state.usedTactics.length+"個 ｜ "+state.usedTactics.slice(-2).join("・"):
+      "採用作戦 "+state.usedTactics.length+"回 ｜ "+state.usedTactics.slice(-2).join("・"):
       "敵を倒して経験値をため、兵器を進化させよう。進化で攻撃方法が変わる！";
     const strike=$("airstrike-button");
     strike.disabled=state.strike<100||!state.active||state.paused||state.finished;
