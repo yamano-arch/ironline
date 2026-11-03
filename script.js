@@ -153,7 +153,7 @@
 
   function upgradeCost(t) {
     return Math.round(DEF[t.type].cost * (
-      .38 + Math.pow(t.level, 1.24) * .27
+      .38 + Math.pow(t.level, 1.32) * .32
     ));
   }
 
@@ -189,23 +189,24 @@
   }
 
   function waveProfile(n) {
-    const unitCount=9+Math.floor(n*1.8);
-    const tank=n>=5 && (n%3===0 || n>=14);
-    const drone=n>=6 && (n%4===0 || n>=15);
+    const unitCount=9+Math.floor(n*2.1);
+    const tank=n>=3 && (n%3===0 || n%5===0 || n>=12);
+    const drone=n>=4 && (n%4===0 || n>=10);
     const rush=n%4===2;
     const swarm=n%4===1;
     return {unitCount,tank,drone,rush,swarm,boss:n%5===0,
-      label:(n%5===0?"⚠ 重装甲指揮官 / ":"")+
+      label:n%5===0?"⚠ 指揮官＋重装甲護衛":
         (rush?"高速突破部隊":swarm?"歩兵の大群":tank?"重装甲突撃":drone?"ドローン奇襲":"混成戦闘部隊")};
   }
   function waveKinds(n) {
     const profile=waveProfile(n),result=[];
     for(let i=0;i<profile.unitCount;i++){
       let kind="infantry";
-      if(n>=3&&i%5===0)kind="car";
-      if(profile.tank && i%4===0)kind="tank";
-      if(profile.drone && i%5===2)kind="drone";
-      if(profile.rush && i%3===0)kind="car";
+      if(n>=3&&i%3===0)kind="car";
+      if(profile.tank && i%5===0)kind="tank";
+      if(profile.drone && i%4===2)kind="drone";
+      if(profile.rush && i%2===0)kind="car";
+      if(n%5===0 && i%4===0)kind="tank";
       result.push(kind);
     }
     if(profile.boss)result.push("boss");
@@ -287,13 +288,14 @@
 
   function spawnEnemy(kind) {
     const d = KIND[kind];
-    const scale = 1 + (state.wave-1) * .13;
+    const w=state.wave-1;
+    const scale=1+w*.19+w*w*.018;
     const elite=kind!=="boss" && state.wave>=3 && Math.random()<Math.min(.38,.08+state.wave*.013);
     return {
       id:nextEnemyId++, kind,
       x:PATH[0][0], y:PATH[0][1],
       segment:0, hp:d.hp*scale*(elite?2.2:1), maxHp:d.hp*scale*(elite?2.2:1),
-      speed:d.speed*(elite?1.16:1), armor:d.armor, reward:d.reward*(elite?3:1), elite,
+      speed:d.speed*(1+Math.min(.35,w*.022))*(elite?1.16:1), armor:d.armor, reward:d.reward*(elite?3:1), elite,
       damage:d.damage, color:d.color,
       slowTime:0, alive:true, angle:0
     };
@@ -382,7 +384,7 @@
       state.kills++;if(e.elite)state.eliteKills++;
       combo=comboClock>0?combo+1:1;comboClock=3.6;
       if([5,10,20,40].includes(combo)){
-        const bonus=combo*2;state.money+=bonus;
+        const bonus=combo;state.money+=bonus;
         combatTexts.push({x:W/2,y:70,text:combo+" COMBO! +"+bonus+"G",life:1.5,color:"#ffe17c"});
         screenFlash=Math.max(screenFlash,.15);sfx("unlock");
       }
@@ -777,8 +779,8 @@
     if(!state.queue.length&&!enemies.length){
       state.active=false;
       combo=0;comboClock=0;
-      state.money+=50;
-      if(state.hp===state.maxHp)state.money+=20;
+      state.money+=state.wave<3?50:30;
+      if(state.hp===state.maxHp)state.money+=state.wave<3?20:10;
       state.xp+=15;
       state.wavePlan=null;state.operationName=null;
       const newly=state.wave===1?"cannon":state.wave===3?"missile":state.wave===4?"radar":null;
