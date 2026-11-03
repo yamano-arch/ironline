@@ -258,3 +258,19 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .awakening-codex strong{font-size:12px;color:#ffe0a0}
 .awakening-codex strong span{float:right;color:#b4e8cf}
 .awakening-codex>span{font-size:11px;color:#d6dcce;line-height:1.5}
+
+/* ALPHA 0.6 — concentrated weapon evolution presentation */
+#evolution-modal .modal-content{border:2px solid #ffca75;background:radial-gradient(circle at 50% -10%,#445453 0%,#192b38 40%,#0b1824 100%);box-shadow:0 0 0 2px #0f2c32,0 25px 80px #000e,0 0 70px #e2a44c36;max-height:90dvh;overflow:auto}
+#evolution-modal .modal-eyebrow{color:#ffd48b;letter-spacing:2.5px}
+#evolution-title{font-size:28px;color:#fff3d5;text-shadow:0 2px 12px #ffc46e44}
+#evolution-description{font-size:13px;line-height:1.65;color:#c5dfd9}
+#evolution-options{display:grid;gap:10px}
+.evolution-choice.branch-choice{margin:0;min-height:101px;border:2px solid #6d8c87;box-shadow:inset 0 1px #ffffff20,0 5px 14px #0005;transition:transform .15s,box-shadow .15s,border-color .15s}
+.branch-choice:nth-child(1){background:linear-gradient(105deg,#734a2b,#2b3439 73%);border-color:#c88b4a}
+.branch-choice:nth-child(2){background:linear-gradient(105deg,#234f6b,#1e3442 73%);border-color:#5dbde2}
+.branch-choice:nth-child(3){background:linear-gradient(105deg,#54416f,#263143 73%);border-color:#b38be3}
+.branch-choice:nth-child(1) .choice-symbol{background:radial-gradient(circle,#ffc25d,#b65c22)}
+.branch-choice:nth-child(2) .choice-symbol{background:radial-gradient(circle,#8ceaff,#256b9e)}
+.branch-choice:nth-child(3) .choice-symbol{background:radial-gradient(circle,#e4b5ff,#694aab)}
+.evolution-choice:hover{transform:translateY(-2px);box-shadow:0 8px 22px #0008}
+@media (max-width:420px){#evolution-modal .modal-content{padding:19px 13px}.evolution-choice.branch-choice{min-height:91px;padding:11px;gap:10px}.branch-choice .choice-symbol{flex-basis:51px;height:51px}.branch-choice .choice-copy strong{font-size:15px}}
