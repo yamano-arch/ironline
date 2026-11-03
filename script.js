@@ -8,14 +8,14 @@
   const W = 390, H = 520;
 
   const DEF = {
-    machinegun: { name:"機関銃", cost:100, dmg:8, rate:.30, range:100, color:"#d5ec8d" },
+    machinegun: { name:"機関銃", cost:100, dmg:19, rate:.18, range:145, color:"#d5ec8d" },
     cannon:     { name:"榴弾砲", cost:180, dmg:65, rate:2.5, range:140, color:"#ffd28c" },
     missile:    { name:"ミサイル", cost:250, dmg:100, rate:3, range:175, color:"#f5ab79" },
     radar:      { name:"電子戦", cost:200, dmg:0, rate:.5, range:115, color:"#86e2f8" }
   };
 
   const KIND = {
-    infantry:{hp:60,speed:38,armor:0,reward:5,damage:1,color:"#be8056"},
+    infantry:{hp:50,speed:35,armor:0,reward:5,damage:1,color:"#be8056"},
     car:{hp:105,speed:65,armor:.13,reward:12,damage:2,color:"#a79a68"},
     tank:{hp:330,speed:24,armor:.54,reward:25,damage:3,color:"#536c51"},
     drone:{hp:115,speed:62,armor:.08,reward:15,damage:1,color:"#8bbdc1"},
@@ -84,7 +84,7 @@
     state = {
       hp:20, maxHp:20, money:500, wave:0, active:false,
       paused:false, speed:1, finished:false,
-      queue:[], spawnTimer:0, xp:0, xpNeed:80,
+      queue:[], spawnTimer:0, xp:0, xpNeed:50,
       upgrades:0, rerolls:3, choosing:false,
        globalPower:1,globalRange:1,fireRate:1,rewardRate:1,globalPierce:0,
        strike:50,strikePower:1,usedTactics:[],kills:0,eliteKills:0,
@@ -627,7 +627,7 @@
             combatTexts.push({x:t.x,y:t.y-40,text:m.name+"!",life:2,color:m.color});
           }else{applyMod(t,m);checkEvolution(t);}
           state.xp=Math.max(0,state.xp-state.xpNeed);
-          state.upgrades++;state.xpNeed=state.upgrades<3?80:120;
+          state.upgrades++;state.xpNeed=state.upgrades<3?70:105;
           state.choosing=false;state.paused=false;
           $("evolution-modal").classList.add("hidden");
           if(!t.awakened)notice((branchChoice?"進化完了：":"能力獲得：")+m.name);
