@@ -239,7 +239,7 @@
       impact.textContent=card.tier==="ECONOMY"?"▶ 建設・増設ルート":card.tier==="DEFENSE"?"▶ 防衛持久ルート":card.tier==="FIREPOWER"?"▶ 火力殲滅ルート":card.tier==="ANTI-ARMOR"?"▶ 戦車迎撃ルート":card.tier==="TACTICAL"?"▶ 射程制圧ルート":"▶ 爆撃支援ルート";
       button.append(type,head,desc,impact);
       button.onclick=()=>{
-        card.apply();state.usedTactics.push(card.name.replace(/^[^ ]+ /,""));
+        card.apply();state.operationName=card.name;state.usedTactics.push(card.name.replace(/^[^ ]+ /,""));
         state.choosing=false;state.paused=false;
         $("draft-modal").classList.add("hidden");
         launchWave(n);updateUI();
@@ -256,7 +256,7 @@
     state.queue=waveKinds(n);
     state.spawnedThisWave=0;
     state.spawnTimer=.5;state.paused=false;
-    notice("WAVE "+n+" — "+waveProfile(n).label);
+    notice("WAVE "+n+" — "+waveProfile(n).label+(state.operationName?" ／ "+state.operationName:""));
     missionBanner=2.25;screenFlash=.17;
     $("wave-alert").textContent="WAVE "+String(n).padStart(2,"0")+" // "+waveProfile(n).label;
     $("wave-alert").classList.remove("hidden");
@@ -326,6 +326,26 @@
       }
     }
 
+    // Operations trigger on-screen, so the player sees the tactical choice pay off.
+    if(e.operationPending&&e.x>=10){
+      const op=e.operationPending;e.operationPending=null;
+      if(op==="emp"){
+        e.slowTime=Math.max(e.slowTime,5);
+        shockwaves.push({x:e.x,y:e.y,r:4,max:42,life:.65,color:"#79eaff"});
+        combatTexts.push({x:e.x,y:e.y-19,text:"EMP",life:.75,color:"#8ceaff"});
+      }
+      if(op==="mines"){
+        e.hp=Math.max(1,e.hp-65);burst(e.x,e.y,"#ffce6d",24);
+        shockwaves.push({x:e.x,y:e.y,r:5,max:54,life:.4,color:"#ffbf63"});
+        combatTexts.push({x:e.x,y:e.y-22,text:"MINE -65",life:.75,color:"#ffe097"});
+      }
+      if(op==="barrage"){
+        e.hp=Math.max(1,e.hp-95);
+        beams.push({x1:e.x+65,y1:0,x2:e.x,y2:e.y,life:.35,max:.35,kind:"rail",color:"#ffba67",width:7});
+        burst(e.x,e.y,"#ffbb77",26);kick=3;
+        combatTexts.push({x:e.x,y:e.y-22,text:"ROCKET -95",life:.75,color:"#ffd17c"});
+      }
+    }
     if (e.segment >= PATH.length-1) {
       e.alive=false;
       state.hp -= e.damage;
@@ -720,20 +740,9 @@
       const foe=spawnEnemy(state.queue.shift());
       state.spawnedThisWave++;
       if(state.wavePlan==="bounty"){foe.hp*=1.25;foe.maxHp*=1.25;foe.reward*=2;}
-      if(state.wavePlan==="emp"&&state.spawnedThisWave<=8){
-        foe.slowTime=5;
-        shockwaves.push({x:foe.x,y:foe.y,r:4,max:42,life:.65,color:"#79eaff"});
-      }
-      if(state.wavePlan==="mines"&&state.spawnedThisWave<=6){
-        foe.hp=Math.max(1,foe.hp-65);
-        burst(foe.x,foe.y,"#ffce6d",24);
-        shockwaves.push({x:foe.x,y:foe.y,r:5,max:54,life:.4,color:"#ffbf63"});
-      }
-      if(state.wavePlan==="barrage"&&state.spawnedThisWave<=6){
-        foe.hp=Math.max(1,foe.hp-95);
-        beams.push({x1:foe.x+80,y1:0,x2:foe.x,y2:foe.y,life:.35,max:.35,kind:"rail",color:"#ffba67",width:7});
-        burst(foe.x,foe.y,"#ffbb77",26);kick=3;
-      }
+      if(state.wavePlan==="emp"&&state.spawnedThisWave<=8)foe.operationPending="emp";
+      if(state.wavePlan==="mines"&&state.spawnedThisWave<=6)foe.operationPending="mines";
+      if(state.wavePlan==="barrage"&&state.spawnedThisWave<=6)foe.operationPending="barrage";
       enemies.push(foe);
       state.spawnTimer=waveProfile(state.wave).rush?.28:waveProfile(state.wave).swarm?.32:.47;
     }
@@ -767,7 +776,7 @@
       state.money+=50;
       if(state.hp===state.maxHp)state.money+=20;
       state.xp+=15;
-      state.wavePlan=null;
+      state.wavePlan=null;state.operationName=null;
       const newly=state.wave===1?"cannon":state.wave===3?"missile":state.wave===4?"radar":null;
       if(newly){notice("🎉 "+DEF[newly].name+" 解放！");sfx("unlock");
         const card=document.querySelector('[data-tower="'+newly+'"]');if(card)card.classList.add("unlocked");
