@@ -292,3 +292,9 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .draft-option{transition:background .15s,transform .15s}
 .draft-option:active{transform:scale(.985)}
 .draft-option:focus-visible{outline:3px solid #ffe18b;outline-offset:2px}
+
+/* 0.9.2: keep the way forward in the same viewport after an evolution */
+.quick-next-wave{position:absolute;z-index:15;top:59px;left:50%;transform:translateX(-50%);width:calc(100% - 42px);max-width:350px;min-height:48px;padding:10px 15px;border:2px solid #e9ee9b;border-radius:10px;background:linear-gradient(145deg,#dcec8d,#9ece69);color:#193326;font-size:14px;font-weight:900;box-shadow:0 6px 20px #0009,0 0 0 4px #c4f07d3d;animation:next-wave-pulse 1.7s ease-in-out infinite}
+.quick-next-wave:focus-visible{outline:3px solid white;outline-offset:3px}
+@keyframes next-wave-pulse{50%{box-shadow:0 6px 20px #0009,0 0 0 8px #c4f07d20}}
+@media(prefers-reduced-motion:reduce){.quick-next-wave{animation:none}}
