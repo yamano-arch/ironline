@@ -732,7 +732,7 @@
     if(state.noteTime>0){
       state.noteTime-=dt;
       if(state.noteTime<=0)
-        $("battle-message").textContent="防衛作戦進行中";
+        $("battle-message").textContent=state.active?"防衛作戦進行中":"WAVE "+state.wave+" クリア！ 次の作戦へ";
     }
 
     if(!state.active)return;
