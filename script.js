@@ -46,7 +46,27 @@
 
   let state, towers, enemies, bullets, effects;
   let selectedType, selectedPad, lastTime = 0;
-  let nextEnemyId = 1;
+  let nextEnemyId = 1, kick=0;
+  let smokes=[],flashes=[],soundOn=true,audio=null;
+  const unlockAt={machinegun:0,cannon:1,missile:3,radar:4};
+  const unlocked=type=>state.wave>=unlockAt[type];
+  function sfx(kind){
+    if(!soundOn)return;
+    try{const C=window.AudioContext||window.webkitAudioContext;if(!C)return;audio=audio||new C();
+      if(audio.state==="suspended")audio.resume();
+      const o=audio.createOscillator(),g=audio.createGain(),at=audio.currentTime,hz=kind==="shot"?175:kind==="boom"?75:600;
+      o.type="sawtooth";o.frequency.setValueAtTime(hz,at);o.frequency.exponentialRampToValueAtTime(hz*.45,at+.13);
+      g.gain.setValueAtTime(kind==="boom"?.05:.016,at);g.gain.exponentialRampToValueAtTime(.001,at+.15);
+      o.connect(g);g.connect(audio.destination);o.start(at);o.stop(at+.16);
+    }catch(e){}
+  }
+  function guide(){
+    const n=$("guide-text");if(!n)return;
+    n.textContent=state.wave===0&&!towers.length?"① 光るマスをタップして機関銃を配置しよう！":
+      state.wave===0?"② 配置できた！ WAVE 1 を開始してみよう":
+      state.wave===1&&state.active?"③ 銃身が回転して敵を撃破！":
+      state.wave===1?"④ 榴弾砲が解放！範囲攻撃を試してみよう":"兵器を強化して次の敵部隊に備えよう！";
+  }
   let draftForWave=0, strikeAiming=false, strikeRings=[], combatTexts=[];
   const TACTICS = [
     {id:"warfund",tier:"ECONOMY",name:"💰 戦時特別予算",desc:"即時 +200G。配置と強化で敵を迎え撃つ。",apply:()=>state.money+=200},
@@ -73,7 +93,7 @@
     towers = []; enemies = []; bullets = []; effects = [];
     selectedType = "machinegun";
     selectedPad = -1;
-    draftForWave=0;strikeAiming=false;strikeRings=[];combatTexts=[];
+    draftForWave=0;strikeAiming=false;strikeRings=[];combatTexts=[];kick=0;smokes=[];flashes=[];
     $("draft-modal").classList.add("hidden");
     $("strike-hint").classList.add("hidden");
     $("evolution-modal").classList.add("hidden");
@@ -99,13 +119,14 @@
       cooldown:0, angle:-Math.PI/2,
       pierce:state.globalPierce, critical:0, blast:0,
       chain:false, slow:false, mods:[],
-      evolution:null, kills:0
+      evolution:null, kills:0,spin:0,recoil:0,glow:0
     };
   }
 
   function selectPad(index) {
     if (state.choosing || state.finished) return;
 
+    if(!towerAt(index)&&!unlocked(selectedType)){notice("まだ解放されていない兵器です");return;}
     selectedPad = index;
     const existing = towerAt(index);
 
@@ -118,7 +139,7 @@
       }
       state.money -= price;
       towers.push(makeTower(index, selectedType));
-      notice(DEF[selectedType].name + "を設置！");
+      notice(DEF[selectedType].name + "を設置！");sfx("unlock");
     }
 
     updateUI();
@@ -142,7 +163,11 @@
     t.power *= t.type === "radar" ? 1.08 : 1.16;
     if (t.type === "radar") t.range *= 1.025;
 
-    burst(t.x,t.y,"#c7ee86",22);
+    burst(t.x,t.y,"#c7ee86",35);sfx("unlock");kick=3;
+    if(t.type==="machinegun"&&(t.level===3||t.level===5)){
+      notice(t.level===3?"二連装ガトリング進化！":"四連装ヴァルカン進化！");
+      combatTexts.push({x:t.x,y:t.y-38,text:"EVOLUTION!",life:1.2,color:"#ffe48d"});
+    }
     notice("LEVEL " + t.level + " に強化！");
     updateUI();
   }
@@ -216,6 +241,7 @@
   }
   function startWave() {
     if(state.active||state.finished||state.choosing)return;
+    if(state.wave===0){launchWave(1);updateUI();return;}
     tacticalDraft(state.wave+1);
   }
   function useAirstrike(x,y) {
@@ -332,15 +358,23 @@
     t.angle=Math.atan2(target.y-t.y,target.x-t.x);
     const d=DEF[t.type];
     const damage=d.dmg*t.power;
-
+    t.recoil=1;t.glow=.16;t.spin+=1;
+    const count=t.type==="machinegun"?(t.level>=5?4:t.level>=3?2:1):1;
+    if(t.type!=="machinegun"||Math.random()<.2)sfx(t.type==="machinegun"?"shot":"boom");
+    for(let shot=0;shot<count;shot++){
+    const angle=t.angle+(shot-(count-1)/2)*.065;
     bullets.push({
-      x:t.x,y:t.y,px:t.x,py:t.y,targetId:target.id,
+      x:t.x+Math.cos(angle)*25,y:t.y+Math.sin(angle)*25,px:t.x,py:t.y,targetId:target.id,
       tx:target.x,ty:target.y,
       speed:t.type==="missile"?310:
             t.type==="cannon"?380:650,
-      damage,source:t,type:t.type,
+      damage:damage*(count>1?.6:1),source:t,type:t.type,
       color:d.color,alive:true
-    });
+    });}
+    flashes.push({x:t.x+Math.cos(t.angle)*30,y:t.y+Math.sin(t.angle)*30,life:.14});
+    if(t.type!=="machinegun"){kick=Math.max(kick,2.5);
+      for(let n=0;n<5;n++)smokes.push({x:t.x+(Math.random()-.5)*24,y:t.y+(Math.random()-.5)*24,r:3+Math.random()*6,life:.4+Math.random()*.5});
+    }
 
     combatTexts.push({x:t.x+Math.cos(t.angle)*18,y:t.y+Math.sin(t.angle)*18,text:"✦",life:.22,color:"#fff3c5"});
     burst(
@@ -351,6 +385,10 @@
   }
 
   function impact(b,target) {
+    if(b.type!=="machinegun"){kick=Math.max(kick,4);sfx("boom");
+      strikeRings.push({x:b.x,y:b.y,radius:2,life:.52});
+      for(let n=0;n<10;n++)smokes.push({x:b.x+(Math.random()-.5)*35,y:b.y+(Math.random()-.5)*35,r:5+Math.random()*8,life:.5+Math.random()*.5});
+    }
     burst(b.x,b.y,b.type==="missile"?"#ff964c":"#ffcf79",
       b.type==="machinegun"?4:18);
 
@@ -405,6 +443,10 @@
       p.vx*=.95;p.vy*=.95;
     });
     effects=effects.filter(p=>p.life>0);
+    smokes.forEach(p=>{p.life-=dt;p.r+=dt*17;p.y-=dt*7;});smokes=smokes.filter(p=>p.life>0);
+    flashes.forEach(p=>p.life-=dt);flashes=flashes.filter(p=>p.life>0);
+    towers.forEach(t=>{t.recoil=Math.max(0,t.recoil-dt*8);t.glow=Math.max(0,t.glow-dt);});
+    kick=Math.max(0,kick-dt*17);
   }
 
   function findTarget(t) {
@@ -595,7 +637,10 @@
       state.money+=50;
       if(state.hp===state.maxHp)state.money+=20;
       state.xp+=15;
-      notice("WAVE "+state.wave+" 突破！");
+      const newly=state.wave===1?"cannon":state.wave===3?"missile":state.wave===4?"radar":null;
+      if(newly){notice("🎉 "+DEF[newly].name+" 解放！");sfx("unlock");
+        const card=document.querySelector('[data-tower="'+newly+'"]');if(card)card.classList.add("unlocked");
+      }else notice("WAVE "+state.wave+" 突破！");
       if(state.wave>=20){
         finish(true);return;
       }
@@ -727,13 +772,14 @@
     rounded(-13,-14,26,22,3,"#2b514b");
     polygon([[-20,14],[-13,19],[13,19],[20,14]],"#152c2b");
     ctx.fillStyle="#8bada2";ctx.fillRect(-21,-14,3,24);ctx.fillRect(18,-14,3,24);
-    ctx.save();ctx.rotate(t.angle+Math.PI/2);
+    ctx.save();ctx.rotate(t.angle+Math.PI/2);ctx.translate(0,t.recoil*7);
     if(t.type==="machinegun"){
       rounded(-12,-12,24,20,4,"#214440");
-      for(let k=-1;k<=1;k++){
-        rounded(k*7-2,-33,4,29,1,"#d4e0c7");
-        circle(k*7,-33,3,"#10282b");
+      const barrels=t.level>=5?4:t.level>=3?2:1;
+      for(let k=0;k<barrels;k++){const x=(k-(barrels-1)/2)*7;
+        rounded(x-2,-33,4,29,1,"#d4e0c7");circle(x,-33,3,"#10282b");
       }
+      if(t.glow>0){circle(0,-35,8+t.glow*30,"#ffe49a");circle(0,-35,4,"#ffb43d");}
       rounded(-8,-11,16,13,3,"#91b8a3");
     }else if(t.type==="cannon"){
       rounded(-8,-12,16,28,4,"#243d37");
@@ -816,6 +862,7 @@
   }
   function draw() {
     ctx.clearRect(0,0,W,H);
+    ctx.save();if(kick>0)ctx.translate((Math.random()-.5)*kick*2,(Math.random()-.5)*kick*2);
     drawTerrain();
     drawPads();
 
@@ -855,6 +902,10 @@
       ctx.strokeText(p.text,p.x,p.y);ctx.fillText(p.text,p.x,p.y);
       ctx.restore();
     });
+    smokes.forEach(p=>{ctx.save();ctx.globalAlpha=Math.max(0,Math.min(.45,p.life*.5));
+      circle(p.x,p.y,p.r,"#e0d6bf");ctx.restore();});
+    flashes.forEach(p=>{ctx.save();ctx.globalAlpha=Math.min(1,p.life*8);
+      circle(p.x,p.y,11,"#fff1bd");circle(p.x,p.y,17,"#ffac5855");ctx.restore();});
     effects.forEach(p=>{
       ctx.globalAlpha=Math.max(0,p.life/p.max);
       circle(p.x,p.y,p.size,p.color);
@@ -871,12 +922,27 @@
     ctx.fillStyle="#e4fff0";ctx.font="bold 10px Rajdhani,sans-serif";
     ctx.textAlign="center";ctx.fillText("HQ",364,155);
     ctx.fillStyle="#b2ffe2";ctx.fillRect(353,163,22,3);
-    ctx.restore();
+    ctx.restore();ctx.restore();
   }
 
   function updateUI() {
     $("base-hp").textContent=state.hp+" / "+state.maxHp;
     $("credits").textContent=state.money+" G";
+    guide();
+    document.querySelectorAll(".tower-card").forEach(card=>{
+      const available=unlocked(card.dataset.tower);
+      card.classList.toggle("locked",!available);
+      card.dataset.unlock="🔒 WAVE "+unlockAt[card.dataset.tower]+" で解放";
+      card.disabled=!available;
+    });
+    const current=towerAt(selectedPad);
+    $("upgrade-next").textContent=current?
+      DEF[current.type].name+" Lv."+current.level+" → Lv."+(current.level+1):
+      "機関銃 Lv.1 → Lv.3 二連装 → Lv.5 四連装";
+    $("upgrade-detail").textContent=current?
+      (current.type==="machinegun"?"Lv.3で二連装、Lv.5で四連装！銃身と弾幕が増える":"強化で火力アップ、改造で特別な能力を獲得"):
+      "兵器をタップすると次の成長を確認できます。";
+    $("sound-button").textContent=soundOn?"♪":"×";
     $("wave-count").textContent=
       String(state.wave).padStart(2,"0")+" / 20";
     $("enemy-count").textContent="敵部隊："+(enemies.length+state.queue.length)+" / KILLS "+state.kills;
@@ -948,6 +1014,7 @@
     };
   });
 
+  $("sound-button").onclick=()=>{soundOn=!soundOn;updateUI();};
   $("airstrike-button").onclick=()=>{
     if(state.strike<100||!state.active||state.paused)return;
     strikeAiming=!strikeAiming;
