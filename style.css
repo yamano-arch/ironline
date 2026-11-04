@@ -339,3 +339,38 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
  .mobile-command-dock .tower-card{min-height:52px}
  .mobile-command-dock #start-wave{min-height:35px}
 }
+
+/* ALPHA 1.1 — true one-screen operation; no document scrolling */
+html,body{height:100%;width:100%;margin:0;overflow:hidden;overscroll-behavior:none}
+body{position:fixed;inset:0}
+.game-shell{height:100dvh;max-height:100dvh;min-height:0;display:flex;flex-direction:column;overflow:hidden;padding:0}
+.game-header{flex:0 0 auto}
+.battle-area{flex:1 1 auto;height:auto!important;min-height:0!important;overflow:hidden}
+#game-canvas{display:block;width:100%;height:100%}
+.control-panel{display:none!important}
+.mobile-command-dock{position:relative;left:auto;bottom:auto;transform:none;flex:0 0 auto;width:100%;max-width:none;box-sizing:border-box;box-shadow:0 -5px 18px #0009}
+.mobile-command-dock .tower-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+.mobile-command-dock .tower-card{min-width:0}
+.modal{box-sizing:border-box;padding:12px;overflow:hidden}
+.modal-content{box-sizing:border-box;max-height:calc(100dvh - 24px);overflow:hidden;padding:12px}
+.modal-content h2{font-size:20px;margin:5px 0}
+.modal-content p{font-size:11px;margin:4px 0 8px}
+#evolution-options{display:grid;gap:5px}
+.evolution-choice{margin:0;padding:8px 10px}
+.evolution-choice strong{font-size:12px;margin-bottom:2px}
+.evolution-choice span{font-size:10px;line-height:1.25}
+#reroll-button{margin-top:6px;padding:7px 12px;font-size:11px}
+#draft-modal{display:none!important}
+@media(max-height:680px){
+  .game-header{height:70px;padding:5px 8px}
+  .status-bar{margin-top:4px}
+  .status-item{min-height:32px;padding:3px}
+  .mobile-command-dock{gap:3px;padding:4px 6px calc(4px + env(safe-area-inset-bottom,0px))}
+  .mobile-command-dock .tower-card{min-height:45px;padding:2px}
+  .mobile-command-dock .tower-symbol{height:20px;width:22px}
+  .mobile-command-dock .action-row button{min-height:29px}
+  .mobile-command-dock #start-wave{min-height:32px}
+  .dock-status{font-size:10px}
+  .modal-content{padding:8px}
+  .evolution-choice{padding:6px}
+}
