@@ -298,3 +298,44 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .quick-next-wave:focus-visible{outline:3px solid white;outline-offset:3px}
 @keyframes next-wave-pulse{50%{box-shadow:0 6px 20px #0009,0 0 0 8px #c4f07d20}}
 @media(prefers-reduced-motion:reduce){.quick-next-wave{animation:none}}
+
+/* 1.0: single-screen tactical layout for mobile */
+.game-shell{max-width:480px;padding-bottom:0;overflow:visible}
+.game-header{height:92px;padding:6px 10px 8px;border-bottom-width:2px}
+.brand{font-size:21px;gap:7px;line-height:1}
+.brand-mark{font-size:16px}
+.version{font-size:9px;padding:2px 4px}
+.mission-name{display:none}
+.status-bar{margin-top:9px;gap:5px}
+.status-item{padding:6px;min-height:44px}
+.status-icon{font-size:15px}
+.status-item small{font-size:8px}
+.status-item strong{font-size:17px}
+.battle-area{height:calc(100dvh - 288px - env(safe-area-inset-bottom,0px));min-height:300px}
+#game-canvas{width:100%;height:100%;aspect-ratio:auto}
+.battle-topbar{top:5px;left:5px;right:5px}
+#battle-message{padding:5px 7px;max-width:57%;font-size:10px}
+.battle-controls button{min-width:31px;min-height:31px;padding:3px;font-size:13px}
+.battle-bottombar{padding:5px 9px;font-size:11px}
+.mobile-command-dock{position:fixed;bottom:0;left:50%;transform:translateX(-50%);z-index:45;width:100%;max-width:480px;padding:7px 9px calc(8px + env(safe-area-inset-bottom,0px));border-top:2px solid #91b89b;background:linear-gradient(180deg,#152f32f7,#0b1d26);box-shadow:0 -8px 24px #000b;display:flex;flex-direction:column;gap:6px}
+.dock-status{font-size:11px;color:#c5e6ca;font-weight:700;min-height:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mobile-command-dock .tower-grid{gap:5px}
+.mobile-command-dock .tower-card{min-height:61px;gap:2px;padding:4px 2px;border-radius:7px}
+.mobile-command-dock .tower-symbol{width:27px;height:24px;font-size:12px;border-width:1px}
+.mobile-command-dock .tower-name{font-size:10px}
+.mobile-command-dock .tower-price{font-size:11px}
+.mobile-command-dock .tower-desc{display:none}
+.mobile-command-dock .action-row{display:grid;grid-template-columns:1fr 1fr 1.3fr;gap:6px;margin:0}
+.mobile-command-dock .action-row button{min-height:34px;padding:3px;border-radius:6px;font-size:11px}
+.mobile-command-dock #airstrike-button{margin:0;min-width:0;box-shadow:none;white-space:nowrap;min-height:34px;font-size:11px}
+.mobile-command-dock #start-wave{margin:0;min-height:40px;font-size:14px;box-shadow:0 2px #698d4e}
+.control-panel{padding-bottom:225px}
+.quick-next-wave{top:50px;font-size:12px;min-height:42px}
+@media(max-height:670px){
+ .game-header{height:76px}
+ .status-bar{margin-top:5px}
+ .status-item{min-height:36px;padding:4px}
+ .battle-area{height:calc(100dvh - 272px - env(safe-area-inset-bottom,0px));min-height:260px}
+ .mobile-command-dock .tower-card{min-height:52px}
+ .mobile-command-dock #start-wave{min-height:35px}
+}
