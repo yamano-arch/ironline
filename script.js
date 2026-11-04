@@ -15,11 +15,11 @@
   };
 
   const KIND = {
-    infantry:{hp:50,speed:35,armor:0,reward:5,damage:1,color:"#be8056"},
-    car:{hp:105,speed:65,armor:.13,reward:12,damage:2,color:"#a79a68"},
-    tank:{hp:330,speed:24,armor:.54,reward:25,damage:3,color:"#536c51"},
-    drone:{hp:115,speed:62,armor:.08,reward:15,damage:1,color:"#8bbdc1"},
-    boss:{hp:3200,speed:18,armor:.4,reward:200,damage:5,color:"#a85c4f"}
+    infantry:{hp:50,speed:47,armor:0,reward:5,damage:1,color:"#be8056"},
+    car:{hp:105,speed:88,armor:.13,reward:12,damage:2,color:"#a79a68"},
+    tank:{hp:330,speed:34,armor:.54,reward:25,damage:3,color:"#536c51"},
+    drone:{hp:115,speed:91,armor:.08,reward:15,damage:1,color:"#8bbdc1"},
+    boss:{hp:3200,speed:29,armor:.4,reward:200,damage:5,color:"#a85c4f"}
   };
 
   const PATH = [
@@ -256,7 +256,7 @@
     state.wave=n;state.active=true;
     state.queue=waveKinds(n);
     state.spawnedThisWave=0;
-    state.spawnTimer=.5;state.paused=false;
+    state.spawnTimer=.22;state.paused=false;
     notice("WAVE "+n+" — "+waveProfile(n).label+(state.operationName?" ／ "+state.operationName:""));
     missionBanner=2.25;screenFlash=.17;
     $("wave-alert").textContent="WAVE "+String(n).padStart(2,"0")+" // "+waveProfile(n).label;
@@ -266,7 +266,8 @@
     if(state.active||state.finished||state.choosing)return;
     if(!towers.length){notice("先に光るマスをタップして機関銃を配置しよう！");return;}
     if(state.wave===0){launchWave(1);updateUI();return;}
-    tacticalDraft(state.wave+1);
+    if((state.wave+1)%2===0)tacticalDraft(state.wave+1);
+    else {launchWave(state.wave+1);updateUI();}
   }
   function useAirstrike(x,y) {
     if(state.strike<100 || !state.active || state.paused)return;
@@ -750,7 +751,7 @@
       if(state.wavePlan==="mines"&&state.spawnedThisWave<=6)foe.operationPending="mines";
       if(state.wavePlan==="barrage"&&state.spawnedThisWave<=6)foe.operationPending="barrage";
       enemies.push(foe);
-      state.spawnTimer=waveProfile(state.wave).rush?.28:waveProfile(state.wave).swarm?.32:.47;
+      state.spawnTimer=waveProfile(state.wave).rush?.17:waveProfile(state.wave).swarm?.19:.24;
     }
 
     enemies.forEach(e=>{
@@ -1202,7 +1203,12 @@
     $("upgrade-button").textContent=t?
       "↑ 強化 "+(t.level>=10?"MAX":cost+"G"):"↑ 強化";
 
-    $("tower-info").textContent=t?
+    const dockStatus=$("dock-status");
+    if(dockStatus)dockStatus.textContent=state.choosing?"進化・作戦を選択中":
+      state.active?"WAVE "+state.wave+" 迎撃中  •  配置・強化可能":
+      t?DEF[t.type].name+" Lv."+t.level+"  •  強化して次の襲撃に備えよう":
+      "兵器を選択 → マップの＋に配置";
+        $("tower-info").textContent=t?
       DEF[t.type].name+" Lv."+t.level+
       " ｜ 改造 "+t.mods.length+"/"+(t.type==="machinegun"?2:3)+
       (t.evolution?" ｜ ★ "+t.evolution:""):
@@ -1243,7 +1249,22 @@
     notice(strikeAiming?"✈ 爆撃したい地点をタップ！":"爆撃指定を解除");
     updateUI();
   };
-  const quickNext=document.createElement("button");
+  // Compact command deck: all primary decisions remain accessible without scrolling.
+  const dock=document.createElement("div");
+  dock.className="mobile-command-dock";
+  const dockTitle=document.createElement("div");
+  dockTitle.className="dock-status";
+  dockTitle.id="dock-status";
+  dockTitle.textContent="兵器を選択して配置";
+  dock.appendChild(dockTitle);
+  const panel=document.querySelector(".control-panel");
+  dock.appendChild(panel.querySelector(".tower-grid"));
+  const dockActions=panel.querySelector(".action-row");
+  dockActions.appendChild(panel.querySelector("#airstrike-button"));
+  dock.appendChild(dockActions);
+  dock.appendChild(panel.querySelector("#start-wave"));
+  document.querySelector(".game-shell").appendChild(dock);
+    const quickNext=document.createElement("button");
   quickNext.id="quick-next-wave";
   quickNext.type="button";
   quickNext.className="quick-next-wave hidden";
