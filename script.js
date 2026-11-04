@@ -687,8 +687,8 @@
           $("evolution-modal").classList.add("hidden");
           if(!t.awakened)notice((branchChoice?"進化完了：":"能力獲得：")+m.name);
           if(!state.active){
-            notice("進化完了！ 画面上の ▶ WAVE "+(state.wave+1)+" の作戦へ で進もう");
-            document.querySelector(".battle-area").scrollIntoView({behavior:"smooth",block:"start"});
+            notice("進化完了！ 下の ▶ WAVE "+(state.wave+1)+" 開始で進もう");
+            // One-screen UI: no programmatic page scrolling.
           }
           updateUI();
         };
@@ -794,7 +794,7 @@
       }
     }
 
-    if(!state.active&&state.xp>=state.xpNeed&&
+    if(!state.active&&state.wave>0&&state.wave%3===0&&state.xp>=state.xpNeed&&
        towers.some(t=>t.type==="machinegun"?
          (!t.branch||t.mods.length<2):t.mods.length<3)){
       openEvolution();
