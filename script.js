@@ -266,8 +266,9 @@
     if(state.active||state.finished||state.choosing)return;
     if(!towers.length){notice("先に光るマスをタップして機関銃を配置しよう！");return;}
     if(state.wave===0){launchWave(1);updateUI();return;}
-    if((state.wave+1)%2===0)tacticalDraft(state.wave+1);
-    else {launchWave(state.wave+1);updateUI();}
+    // Keep the flow uninterrupted: tactical briefings previously blocked every other wave.
+    launchWave(state.wave+1);
+    updateUI();
   }
   function useAirstrike(x,y) {
     if(state.strike<100 || !state.active || state.paused)return;
