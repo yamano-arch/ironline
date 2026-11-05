@@ -18,7 +18,7 @@
     infantry:{hp:54,speed:53,armor:0,reward:5,damage:1,color:"#be8056"},
     car:{hp:130,speed:101,armor:.18,reward:12,damage:2,color:"#a79a68"},
     tank:{hp:365,speed:37,armor:.56,reward:25,damage:3,color:"#536c51"},
-    drone:{hp:145,speed:114,armor:.08,reward:15,damage:2,color:"#8bbdc1"},
+    drone:{hp:135,speed:108,armor:.08,reward:15,damage:1,color:"#8bbdc1"},
     boss:{hp:1900,speed:30,armor:.40,reward:200,damage:5,color:"#a85c4f"}
   };
 
