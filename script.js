@@ -190,7 +190,7 @@
 
   function waveProfile(n) {
     const unitCount=9+Math.floor(n*2.1);
-    const tank=n>=3 && (n%3===0 || n%5===0 || n>=12);
+    const tank=n===3 || (n>=7 && (n%3===0 || n%5===0 || n>=12));
     const drone=n>=4 && (n%4===0 || n>=10);
     const rush=n%4===2;
     const swarm=n%4===1;
@@ -204,7 +204,7 @@
       // Enemy composition is deliberately legible: every wave tests a different counter.
       let kind="infantry";
       if(n>=2&&i%3===0)kind="car";
-      if(profile.rush&&i%2===0)kind="car";
+      if(profile.rush&&i%4===0)kind="car";
       if(profile.tank&&i%6===0)kind="tank";
       if(profile.drone&&i%3===1)kind="drone";
       if(n%5===0&&i%(n===5?7:6)===0)kind="tank";
