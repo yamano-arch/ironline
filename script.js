@@ -789,7 +789,7 @@
     if(!state.queue.length&&!enemies.length){
       state.active=false;
       combo=0;comboClock=0;
-      state.money+=state.wave<3?50:30;
+      state.money+=state.wave===2?170:state.wave<3?50:30;
       if(state.hp===state.maxHp)state.money+=state.wave<3?20:10;
       state.xp+=15;
       state.wavePlan=null;state.operationName=null;
@@ -1212,6 +1212,8 @@
     $("upgrade-button").textContent=t?
       "↑ 強化 "+(t.level>=10?"MAX":cost+"G"):"↑ 強化";
 
+    const repair=$("repair-button");
+    if(repair){repair.disabled=state.money<60||state.hp>=state.maxHp||state.choosing||state.finished;repair.textContent="♥ 修復 60G";}
     const dockStatus=$("dock-status");
     if(dockStatus){
       const coming=state.wave+1;
@@ -1278,6 +1280,17 @@
   dock.appendChild(panel.querySelector(".tower-grid"));
   const dockActions=panel.querySelector(".action-row");
   dockActions.appendChild(panel.querySelector("#airstrike-button"));
+  const repairButton=document.createElement("button");
+  repairButton.id="repair-button";repairButton.type="button";
+  repairButton.textContent="♥ 修復 60G";
+  repairButton.addEventListener("click",()=>{
+    if(state.finished||state.choosing||state.money<60||state.hp>=state.maxHp)return;
+    const healed=Math.min(4,state.maxHp-state.hp);
+    state.money-=60;state.hp+=healed;
+    notice("基地を修復！ HP +"+healed);
+    updateUI();
+  });
+  dockActions.appendChild(repairButton);
   dock.appendChild(dockActions);
   dock.appendChild(panel.querySelector("#start-wave"));
   document.querySelector(".game-shell").appendChild(dock);
