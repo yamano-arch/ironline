@@ -656,14 +656,25 @@
     if(!available.length)return;
     state.choosing=true;state.paused=true;
     const selected=towerAt(selectedPad);
-    const t=selected&&available.includes(selected)?selected:available.sort((a,b)=>b.level-a.level)[0];
+    let t=available.find(a=>a.type==="machinegun"&&!a.branch)||
+      (selected&&available.includes(selected)?selected:available.sort((a,b)=>b.level-a.level)[0]);
     selectedPad=t.pad;
     $("evolution-modal").classList.remove("hidden");
     const title=$("evolution-title"),intro=$("evolution-description"),holder=$("evolution-options");
     const drawChoices=()=>{
       holder.innerHTML="";
+      // Choose WHICH gun evolves, not only which perk. This is a strategic allocation.
+      const targets=document.createElement("div");targets.className="evolution-targets";
+      available.slice(0,6).forEach(candidate=>{
+        const chip=document.createElement("button");chip.type="button";
+        chip.className="evolution-target"+(candidate===t?" selected":"");
+        chip.textContent=(candidate.type==="machinegun"?"MG":candidate.type==="cannon"?"HE":candidate.type==="missile"?"MS":"EW")+" "+(candidate.pad+1);
+        chip.onclick=()=>{t=candidate;selectedPad=t.pad;drawChoices();};
+        targets.appendChild(chip);
+      });
+      holder.appendChild(targets);
       const branchChoice=t.type==="machinegun"&&!t.branch;
-      title.textContent=branchChoice?"兵器進化：3つの運命":t.branch?"専用能力の選択":"兵器改造";
+      title.textContent=branchChoice?"機関銃：進化ルート":t.branch?"専用能力の選択":"兵器改造";
       intro.textContent=branchChoice?"攻撃方法が劇的に変化する進化先を選べ！":
         t.branch?"能力を組み合わせて隠された覚醒を発見しよう！":"新しい能力を1つ選択してください";
       const options=branchChoice?BRANCHES:evolutionChoices(t);
