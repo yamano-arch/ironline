@@ -19,7 +19,7 @@
     car:{hp:130,speed:101,armor:.18,reward:12,damage:2,color:"#a79a68"},
     tank:{hp:365,speed:37,armor:.56,reward:25,damage:3,color:"#536c51"},
     drone:{hp:135,speed:108,armor:.08,reward:15,damage:1,color:"#8bbdc1"},
-    boss:{hp:1900,speed:30,armor:.40,reward:200,damage:5,color:"#a85c4f"}
+    boss:{hp:1400,speed:30,armor:.40,reward:200,damage:5,color:"#a85c4f"}
   };
 
   const PATH = [
@@ -207,7 +207,7 @@
       if(profile.rush&&i%2===0)kind="car";
       if(profile.tank&&i%6===0)kind="tank";
       if(profile.drone&&i%3===1)kind="drone";
-      if(n%5===0&&i%6===0)kind="tank";
+      if(n%5===0&&i%(n===5?7:6)===0)kind="tank";
       result.push(kind);
     }
     if(profile.boss)result.push("boss");
