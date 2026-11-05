@@ -1329,13 +1329,20 @@
     updateUI();
   };
 
+  // Fixed-step simulation: low rendering FPS must not slow down the battle clock.
+  let gameAccumulator=0;
   function frame(now) {
-    const dt=lastTime?Math.min(.10,(now-lastTime)/1000):0;
+    const elapsed=lastTime?Math.min(.25,(now-lastTime)/1000):0;
     lastTime=now;
-
-    for(let i=0;i<state.speed;i++)update(dt);
+    gameAccumulator+=elapsed*state.speed;
+    let steps=0;
+    while(gameAccumulator>=.05&&steps<15){
+      update(.05);
+      gameAccumulator-=.05;
+      steps++;
+    }
+    if(steps===15&&gameAccumulator>.25)gameAccumulator=.25;
     draw();
-
     requestAnimationFrame(frame);
   }
 
