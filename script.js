@@ -8,18 +8,18 @@
   const W = 390, H = 520;
 
   const DEF = {
-    machinegun: { name:"機関銃", cost:100, dmg:19, rate:.18, range:145, color:"#d5ec8d" },
+    machinegun: { name:"機関銃", cost:100, dmg:19, rate:.20, range:145, color:"#d5ec8d" },
     cannon:     { name:"榴弾砲", cost:180, dmg:65, rate:2.5, range:140, color:"#ffd28c" },
     missile:    { name:"ミサイル", cost:250, dmg:100, rate:3, range:175, color:"#f5ab79" },
     radar:      { name:"電子戦", cost:200, dmg:0, rate:.5, range:115, color:"#86e2f8" }
   };
 
   const KIND = {
-    infantry:{hp:50,speed:47,armor:0,reward:5,damage:1,color:"#be8056"},
-    car:{hp:105,speed:88,armor:.13,reward:12,damage:2,color:"#a79a68"},
-    tank:{hp:330,speed:34,armor:.54,reward:25,damage:3,color:"#536c51"},
-    drone:{hp:115,speed:91,armor:.08,reward:15,damage:1,color:"#8bbdc1"},
-    boss:{hp:3200,speed:29,armor:.4,reward:200,damage:5,color:"#a85c4f"}
+    infantry:{hp:54,speed:53,armor:0,reward:5,damage:1,color:"#be8056"},
+    car:{hp:130,speed:101,armor:.18,reward:12,damage:2,color:"#a79a68"},
+    tank:{hp:365,speed:37,armor:.56,reward:25,damage:3,color:"#536c51"},
+    drone:{hp:145,speed:114,armor:.08,reward:15,damage:2,color:"#8bbdc1"},
+    boss:{hp:3100,speed:30,armor:.40,reward:200,damage:5,color:"#a85c4f"}
   };
 
   const PATH = [
@@ -49,7 +49,7 @@
   let nextEnemyId = 1, kick=0, beams=[];
   let smokes=[],flashes=[],soundOn=true,audio=null;
   let shockwaves=[],screenFlash=0,combo=0,comboClock=0,missionBanner=0,ambientTime=0;
-  const unlockAt={machinegun:0,cannon:1,missile:3,radar:4};
+  const unlockAt={machinegun:0,cannon:1,missile:2,radar:3};
   const unlocked=type=>state.wave>=unlockAt[type];
   function sfx(kind){
     if(!soundOn)return;
@@ -86,7 +86,7 @@
 
   function reset() {
     state = {
-      hp:20, maxHp:20, money:500, wave:0, active:false,
+      hp:20, maxHp:20, money:350, wave:0, active:false,
       paused:false, speed:1, finished:false,
       queue:[], spawnTimer:0, xp:0, xpNeed:50,
       upgrades:0, rerolls:3, choosing:false,
@@ -201,12 +201,13 @@
   function waveKinds(n) {
     const profile=waveProfile(n),result=[];
     for(let i=0;i<profile.unitCount;i++){
+      // Enemy composition is deliberately legible: every wave tests a different counter.
       let kind="infantry";
-      if(n>=3&&i%3===0)kind="car";
-      if(profile.tank && i%5===0)kind="tank";
-      if(profile.drone && i%4===2)kind="drone";
-      if(profile.rush && i%2===0)kind="car";
-      if(n%5===0 && i%4===0)kind="tank";
+      if(n>=2&&i%3===0)kind="car";
+      if(profile.rush&&i%2===0)kind="car";
+      if(profile.tank&&i%4===0)kind="tank";
+      if(profile.drone&&i%3===1)kind="drone";
+      if(n%5===0&&i%4===0)kind="tank";
       result.push(kind);
     }
     if(profile.boss)result.push("boss");
@@ -256,7 +257,7 @@
     state.wave=n;state.active=true;
     state.queue=waveKinds(n);
     state.spawnedThisWave=0;
-    state.spawnTimer=.22;state.paused=false;
+    state.spawnTimer=.16;state.paused=false;
     notice("WAVE "+n+" — "+waveProfile(n).label+(state.operationName?" ／ "+state.operationName:""));
     missionBanner=2.25;screenFlash=.17;
     $("wave-alert").textContent="WAVE "+String(n).padStart(2,"0")+" // "+waveProfile(n).label;
@@ -291,8 +292,8 @@
   function spawnEnemy(kind) {
     const d = KIND[kind];
     const w=state.wave-1;
-    const scale=1+w*.19+w*w*.018;
-    const elite=kind!=="boss" && state.wave>=3 && Math.random()<Math.min(.38,.08+state.wave*.013);
+    const scale=1+w*.20+w*w*.018;
+    const elite=kind!=="boss" && state.wave>=3 && Math.random()<Math.min(.42,.09+state.wave*.016);
     return {
       id:nextEnemyId++, kind,
       x:PATH[0][0], y:PATH[0][1],
@@ -375,7 +376,14 @@
     if (!e.alive) return;
     const armor = e.armor * (1-Math.min(.9,source.pierce));
     const crit = Math.random()<source.critical ? 1.8 : 1;
-    const actual=amount*(1-armor)*crit;
+    const matchup=source.type==="machinegun"?
+      (source.branch==="rail"?(e.kind==="tank"||e.kind==="boss"?2.1:e.kind==="car"?1.3:.8):
+       source.branch==="tesla"?(e.kind==="drone"?1.6:e.kind==="tank"?.55:1.05):
+       source.branch==="gatling"?(e.kind==="infantry"?1.15:e.kind==="tank"?.38:e.kind==="drone"?.58:.75):
+       (e.kind==="tank"?.48:e.kind==="drone"?.55:e.kind==="car"?.72:1)):
+      source.type==="cannon"?(e.kind==="infantry"?1.25:e.kind==="car"?1.2:e.kind==="drone"?.38:.8):
+      source.type==="missile"?(e.kind==="tank"?2.0:e.kind==="drone"?1.8:e.kind==="boss"?1.6:.75):1;
+    const actual=amount*(1-armor)*crit*matchup;
     e.hp -= actual;
     if(actual>15 && Math.random()<.35)combatTexts.push({x:e.x,y:e.y-18,text:"-"+Math.round(actual),life:.65,color:crit>1?"#ffe88d":"#e7f2d2"});
     if(source.slow)e.slowTime=Math.max(e.slowTime,1.5);
@@ -448,7 +456,7 @@
       return;
     }
     t.recoil=1;t.glow=.16;t.spin+=1;
-    const count=t.type==="machinegun"?(t.awakened?8:t.branch==="gatling"?4:t.level>=5?4:t.level>=3?2:1):1;
+    const count=t.type==="machinegun"?(t.awakened?6:t.branch==="gatling"?4:t.level>=5?4:t.level>=3?2:1):1;
     if(t.type!=="machinegun"||Math.random()<.2)sfx(t.type==="machinegun"?"shot":"boom");
     for(let shot=0;shot<count;shot++){
     const angle=t.angle+(shot-(count-1)/2)*.065;
@@ -457,7 +465,7 @@
       tx:target.x,ty:target.y,
       speed:t.type==="missile"?310:
             t.type==="cannon"?380:650,
-      damage:damage*(count>1?.6:1),source:t,type:t.type,
+      damage:damage*(count>1?.43:1),source:t,type:t.type,
       color:d.color,alive:true
     });}
     flashes.push({x:t.x+Math.cos(t.angle)*30,y:t.y+Math.sin(t.angle)*30,life:.14});
@@ -674,7 +682,7 @@
         button.onclick=()=>{
           if(branchChoice){
             t.branch=m.id;t.mods=[];t.evolution=null;
-            if(m.id==="gatling"){t.interval*=.55;t.power*=.85;t.range*=.92;}
+            if(m.id==="gatling"){t.interval*=.72;t.power*=.72;t.range*=.90;}
             if(m.id==="rail"){t.interval*=2.5;t.power*=9;t.pierce=1;t.range*=1.18;}
             if(m.id==="tesla"){t.interval*=1.12;t.power*=2.1;t.chain=true;t.range*=.93;}
             t.glow=.5;kick=5;sfx("unlock");
@@ -752,7 +760,7 @@
       if(state.wavePlan==="mines"&&state.spawnedThisWave<=6)foe.operationPending="mines";
       if(state.wavePlan==="barrage"&&state.spawnedThisWave<=6)foe.operationPending="barrage";
       enemies.push(foe);
-      state.spawnTimer=waveProfile(state.wave).rush?.17:waveProfile(state.wave).swarm?.19:.24;
+      state.spawnTimer=waveProfile(state.wave).rush?.13:waveProfile(state.wave).swarm?.16:.19;
     }
 
     enemies.forEach(e=>{
@@ -785,7 +793,7 @@
       if(state.hp===state.maxHp)state.money+=state.wave<3?20:10;
       state.xp+=15;
       state.wavePlan=null;state.operationName=null;
-      const newly=state.wave===1?"cannon":state.wave===3?"missile":state.wave===4?"radar":null;
+      const newly=state.wave===1?"cannon":state.wave===2?"missile":state.wave===3?"radar":null;
       if(newly){notice("🎉 "+DEF[newly].name+" 解放！");sfx("unlock");
         const card=document.querySelector('[data-tower="'+newly+'"]');if(card)card.classList.add("unlocked");
       }else notice("WAVE "+state.wave+" 突破！");
@@ -1205,10 +1213,18 @@
       "↑ 強化 "+(t.level>=10?"MAX":cost+"G"):"↑ 強化";
 
     const dockStatus=$("dock-status");
-    if(dockStatus)dockStatus.textContent=state.choosing?"進化・作戦を選択中":
-      state.active?"WAVE "+state.wave+" 迎撃中  •  配置・強化可能":
-      t?DEF[t.type].name+" Lv."+t.level+"  •  強化して次の襲撃に備えよう":
-      "兵器を選択 → マップの＋に配置";
+    if(dockStatus){
+      const coming=state.wave+1;
+      const advice=coming===1?"歩兵主体 / 機関銃で練習":
+        coming%5===0?"指揮官＋重装甲 / ミサイル＋減速":
+        coming%4===2?"高速車両 / 榴弾砲・減速で迎撃":
+        coming%4===0?"ドローン / ミサイルで対空":
+        coming%3===0?"重装甲 / ミサイル・徹甲弾":
+        "混成部隊 / 複数兵器を組み合わせよう";
+      dockStatus.textContent=state.choosing?"兵器進化を選択中":
+        state.active?"WAVE "+state.wave+" "+waveProfile(state.wave).label+"  •  配置・強化可能":
+        "次WAVE "+coming+"： "+advice;
+    }
         $("tower-info").textContent=t?
       DEF[t.type].name+" Lv."+t.level+
       " ｜ 改造 "+t.mods.length+"/"+(t.type==="machinegun"?2:3)+
