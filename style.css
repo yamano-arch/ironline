@@ -374,3 +374,11 @@ body{position:fixed;inset:0}
   .modal-content{padding:8px}
   .evolution-choice{padding:6px}
 }
+
+/* ALPHA 1.4 — explicit repair-versus-firepower resource choice */
+.mobile-command-dock .action-row{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+.mobile-command-dock .action-row button{font-size:10px;padding:2px;min-width:0;overflow:hidden}
+#repair-button{border:1px solid #84b9a5;background:#22413b;color:#d9ffe5;font-weight:800}
+#repair-button:disabled{opacity:.4}
+.mobile-command-dock #airstrike-button{font-size:10px}
+.mobile-command-dock #strike-charge{font-size:12px;margin-left:2px}
