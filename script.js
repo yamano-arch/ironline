@@ -206,7 +206,7 @@
       if(n>=2&&i%3===0)kind="car";
       if(profile.rush&&i%4===0)kind="car";
       if(profile.tank&&i%6===0)kind="tank";
-      if(profile.drone&&i%3===1)kind="drone";
+      if(profile.drone&&i%4===1)kind="drone";
       if(n%5===0&&i%(n===5?7:6)===0)kind="tank";
       result.push(kind);
     }
