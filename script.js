@@ -10,7 +10,7 @@
   const DEF = {
     machinegun: { name:"機関銃", cost:100, dmg:19, rate:.20, range:145, color:"#d5ec8d" },
     cannon:     { name:"榴弾砲", cost:180, dmg:65, rate:2.5, range:140, color:"#ffd28c" },
-    missile:    { name:"ミサイル", cost:250, dmg:100, rate:3, range:175, color:"#f5ab79" },
+    missile:    { name:"ミサイル", cost:250, dmg:155, rate:2.2, range:195, color:"#f5ab79" },
     radar:      { name:"電子戦", cost:200, dmg:0, rate:.5, range:115, color:"#86e2f8" }
   };
 
@@ -19,7 +19,7 @@
     car:{hp:130,speed:101,armor:.18,reward:12,damage:2,color:"#a79a68"},
     tank:{hp:365,speed:37,armor:.56,reward:25,damage:3,color:"#536c51"},
     drone:{hp:145,speed:114,armor:.08,reward:15,damage:2,color:"#8bbdc1"},
-    boss:{hp:3100,speed:30,armor:.40,reward:200,damage:5,color:"#a85c4f"}
+    boss:{hp:1900,speed:30,armor:.40,reward:200,damage:5,color:"#a85c4f"}
   };
 
   const PATH = [
@@ -205,9 +205,9 @@
       let kind="infantry";
       if(n>=2&&i%3===0)kind="car";
       if(profile.rush&&i%2===0)kind="car";
-      if(profile.tank&&i%4===0)kind="tank";
+      if(profile.tank&&i%6===0)kind="tank";
       if(profile.drone&&i%3===1)kind="drone";
-      if(n%5===0&&i%4===0)kind="tank";
+      if(n%5===0&&i%6===0)kind="tank";
       result.push(kind);
     }
     if(profile.boss)result.push("boss");
@@ -370,6 +370,7 @@
         max:.7,color,size:2+Math.random()*4
       });
     }
+    if(effects.length>320)effects.splice(0,effects.length-320);
   }
 
   function hurt(e, amount, source) {
@@ -1318,7 +1319,7 @@
   };
 
   function frame(now) {
-    const dt=lastTime?Math.min(.05,(now-lastTime)/1000):0;
+    const dt=lastTime?Math.min(.10,(now-lastTime)/1000):0;
     lastTime=now;
 
     for(let i=0;i<state.speed;i++)update(dt);
