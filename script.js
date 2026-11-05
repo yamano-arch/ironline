@@ -1313,7 +1313,7 @@
   };
 
   $("speed-button").onclick=()=>{
-    state.speed=state.speed===1?2:1;
+    state.speed=state.speed===1?2:state.speed===2?3:1;
     updateUI();
   };
 
