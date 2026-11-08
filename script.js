@@ -438,14 +438,14 @@
        (e.kind==="tank"?.48:e.kind==="drone"?.55:e.kind==="car"?.72:1)):
       source.type==="cannon"?(e.kind==="infantry"?1.25:e.kind==="car"?1.2:e.kind==="drone"?.38:.8):
       source.type==="missile"?(e.kind==="tank"?2.0:e.kind==="drone"?1.8:e.kind==="boss"?1.6:.75):1;
-    const combo=fusionFor(source);
-    const bonus=combo&&combo.info.name==="標的捕捉"&&(e.kind==="tank"||e.kind==="drone")?1.24:1;
+    const link=fusionFor(source);
+    const bonus=link&&link.info.name==="標的捕捉"&&(e.kind==="tank"||e.kind==="drone")?1.24:1;
     const actual=amount*(1-armor)*crit*matchup*bonus;
     e.hp -= actual;
     if(actual>15 && Math.random()<.35)combatTexts.push({x:e.x,y:e.y-18,text:"-"+Math.round(actual),life:.65,color:crit>1?"#ffe88d":"#e7f2d2"});
     if(source.slow)e.slowTime=Math.max(e.slowTime,1.5);
-    if(combo&&combo.info.name==="妨害射撃")e.slowTime=Math.max(e.slowTime,.55);
-    if(combo&&combo.info.name==="EMP榴弾")e.slowTime=Math.max(e.slowTime,.9);
+    if(link&&link.info.name==="妨害射撃")e.slowTime=Math.max(e.slowTime,.55);
+    if(link&&link.info.name==="EMP榴弾")e.slowTime=Math.max(e.slowTime,.9);
 
     if(e.hp<=0){
       e.alive=false;
