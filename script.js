@@ -51,6 +51,30 @@
   let shockwaves=[],screenFlash=0,combo=0,comboClock=0,missionBanner=0,ambientTime=0;
   const unlockAt={machinegun:0,cannon:1,missile:2,radar:3};
   const unlocked=type=>state.wave>=unlockAt[type];
+
+  // Local-only progression: no account, analytics SDK, or personal data collection.
+  const SAVE_KEY="ironline_commander_v1";
+  const DOCTRINES=[
+    {id:"standard",name:"均衡防衛",tag:"標準",desc:"追加条件なし。兵器の相性を覚える基本作戦。"},
+    {id:"assault",name:"先制強襲",tag:"高リスク",desc:"初期資金 +90G / 基地HP -4。先に火力を整える。"},
+    {id:"precision",name:"精密迎撃",tag:"射程重視",desc:"全兵器射程 +12% / 初期資金 -65G。射線を組み直す。"},
+    {id:"salvage",name:"戦場回収",tag:"経済重視",desc:"撃破報酬 +20% / 敵移動速度 +12%。序盤を凌いで成長。"}
+  ];
+  const RESEARCH=[
+    {id:"power",name:"弾道解析",desc:"全兵器の攻撃力 +4%",cost:35},
+    {id:"supply",name:"戦利品回収",desc:"撃破報酬 +5%",cost:55},
+    {id:"reroll",name:"作戦情報局",desc:"改造候補の引き直し +1",cost:80}
+  ];
+  function loadCommander(){
+    try{
+      const raw=JSON.parse(localStorage.getItem(SAVE_KEY)||"{}");
+      const levels={};RESEARCH.forEach(r=>levels[r.id]=raw.levels&&raw.levels[r.id]===1?1:0);
+      return {points:Math.max(0,Math.min(99999,Number(raw.points)||0)),best:Math.max(0,Math.min(20,Number(raw.best)||0)),runs:Math.max(0,Number(raw.runs)||0),levels};
+    }catch(_){return {points:0,best:0,runs:0,levels:{power:0,supply:0,reroll:0}};}
+  }
+  const commander=loadCommander();
+  let doctrine="standard",labOpenedFromResult=false;
+  function saveCommander(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(commander));}catch(_){/* private mode */}}
   function sfx(kind){
     if(!soundOn)return;
     try{const C=window.AudioContext||window.webkitAudioContext;if(!C)return;audio=audio||new C();
@@ -95,6 +119,14 @@
       note:"防衛施設を設置してください",
       noteTime:0
     };
+    state.money+=doctrine==="assault"?90:doctrine==="precision"?-65:0;
+    state.hp-=doctrine==="assault"?4:0;
+    state.maxHp=20;
+    state.globalRange*=doctrine==="precision"?1.12:1;
+    state.globalPower*=commander.levels.power?1.04:1;
+    state.rewardRate*=commander.levels.supply?1.05:1;
+    state.rewardRate*=doctrine==="salvage"?1.20:1;
+    state.rerolls+=commander.levels.reroll?1:0;
     towers = []; enemies = []; bullets = []; effects = [];
     selectedType = "machinegun";
     selectedPad = -1;
@@ -298,7 +330,7 @@
       id:nextEnemyId++, kind,
       x:PATH[0][0], y:PATH[0][1],
       segment:0, hp:d.hp*scale*(elite?2.2:1), maxHp:d.hp*scale*(elite?2.2:1),
-      speed:d.speed*(1+Math.min(.35,w*.022))*(elite?1.16:1), armor:d.armor, reward:d.reward*(elite?3:1), elite,
+      speed:d.speed*(1+Math.min(.35,w*.022))*(elite?1.16:1)*(doctrine==="salvage"?1.12:1), armor:d.armor, reward:d.reward*(elite?3:1), elite,
       damage:d.damage, color:d.color,
       slowTime:0, alive:true, angle:0
     };
@@ -727,6 +759,9 @@
   function finish(win) {
     state.finished=true;state.active=false;
     state.paused=true;
+    const gained=Math.floor(state.wave*3+Math.min(30,state.kills/6)+(win?80:0));
+    commander.points+=gained;commander.best=Math.max(commander.best,state.wave);commander.runs++;
+    saveCommander();
 
     $("result-modal").classList.remove("hidden");
     $("result-icon").textContent=win?"★":"✕";
@@ -742,6 +777,7 @@
       " / 20 ｜ 撃破 "+state.kills+" ｜ エリート撃破 "+state.eliteKills+
       " ｜ 獲得戦術 "+state.usedTactics.length+
       " ｜ 防衛評価："+(win?"★".repeat(stars):"—");
+    $("result-salvage").textContent="研究データ +"+gained+" ◆ / 累計 "+commander.points+" ◆";
     updateUI();
   }
 
@@ -1147,6 +1183,8 @@
   }
 
   function updateUI() {
+    const labButton=$("dock-lab-button");
+    if(labButton)labButton.textContent="◆ 司令部 "+commander.points;
     const nextButton=$("quick-next-wave");
     if(nextButton){
       const showNext=state.wave>0&&!state.active&&!state.choosing&&!state.finished;
@@ -1287,7 +1325,11 @@
   dockTitle.className="dock-status";
   dockTitle.id="dock-status";
   dockTitle.textContent="兵器を選択して配置";
-  dock.appendChild(dockTitle);
+  const dockHead=document.createElement("div");dockHead.className="dock-head";
+  const labButton=document.createElement("button");labButton.id="dock-lab-button";
+  labButton.type="button";labButton.textContent="◆ 司令部";
+  labButton.addEventListener("click",()=>openLab(false));
+  dockHead.append(dockTitle,labButton);dock.appendChild(dockHead);
   const panel=document.querySelector(".control-panel");
   dock.appendChild(panel.querySelector(".tower-grid"));
   const dockActions=panel.querySelector(".action-row");
@@ -1316,6 +1358,60 @@
   $("upgrade-button").onclick=upgradeTower;
   $("sell-button").onclick=sellTower;
   $("retry-button").onclick=reset;
+  $("result-lab-button").onclick=()=>openLab(true);
+  $("lab-close").onclick=()=>{
+    $("lab-modal").classList.add("hidden");
+    labOpenedFromResult=false;
+    updateUI();
+  };
+
+  function openLab(fromResult){
+    if(state.active||state.choosing){notice("司令部はWAVE間に利用できます");return;}
+    labOpenedFromResult=fromResult;
+    renderLab();
+    $("lab-modal").classList.remove("hidden");
+  }
+  function renderLab(){
+    $("lab-points").textContent=commander.points+" ◆";
+    $("lab-best").textContent="最高 WAVE "+commander.best+" / 挑戦 "+commander.runs+"回";
+    const locked=state.wave>0&&!state.finished;
+    const doctrineBox=$("lab-doctrines");doctrineBox.replaceChildren();
+    DOCTRINES.forEach(d=>{
+      const button=document.createElement("button");button.type="button";
+      button.className="lab-option"+(d.id===doctrine?" chosen":"");
+      button.disabled=locked;
+      const head=document.createElement("strong");head.textContent=(d.id===doctrine?"✓ ":"")+d.name;
+      const tag=document.createElement("small");tag.textContent=d.tag;
+      const desc=document.createElement("span");desc.textContent=d.desc;
+      button.append(head,tag,desc);
+      button.onclick=()=>{
+        if(locked)return;
+        doctrine=d.id;
+        if(state.wave===0){reset();$("lab-modal").classList.remove("hidden");}
+        $("lab-notice").textContent="出撃作戦を「"+d.name+"」に変更";
+        renderLab();updateUI();
+      };
+      doctrineBox.append(button);
+    });
+    const researchBox=$("lab-research");researchBox.replaceChildren();
+    RESEARCH.forEach(r=>{
+      const purchased=!!commander.levels[r.id];
+      const button=document.createElement("button");button.type="button";
+      button.className="lab-option research-option"+(purchased?" completed":"");
+      button.disabled=purchased||commander.points<r.cost;
+      const name=document.createElement("strong");name.textContent=r.name;
+      const desc=document.createElement("span");desc.textContent=r.desc;
+      const price=document.createElement("small");price.textContent=purchased?"研究済":r.cost+" ◆";
+      button.append(name,desc,price);
+      button.onclick=()=>{
+        if(commander.levels[r.id]||commander.points<r.cost)return;
+        commander.points-=r.cost;commander.levels[r.id]=1;saveCommander();
+        $("lab-notice").textContent=r.name+" 研究完了。次の出撃から有効。";
+        renderLab();updateUI();
+      };
+      researchBox.append(button);
+    });
+  }
 
   $("pause-button").onclick=()=>{
     if(state.choosing||state.finished)return;
@@ -1349,3 +1445,4 @@
   reset();
   requestAnimationFrame(frame);
 })();
+
