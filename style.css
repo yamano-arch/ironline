@@ -378,6 +378,30 @@ body{position:fixed;inset:0}
 /* ALPHA 1.4 — explicit repair-versus-firepower resource choice */
 .mobile-command-dock .action-row{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
 .mobile-command-dock .action-row button{font-size:10px;padding:2px;min-width:0;overflow:hidden}
+.dock-head{display:flex;align-items:center;justify-content:space-between;gap:5px;min-width:0}
+.dock-head .dock-status{flex:1;min-width:0}
+#dock-lab-button{flex:0 0 auto;padding:3px 8px;border:1px solid #709b8f;border-radius:6px;background:#193b3b;color:#e3f5b2;font-size:10px;font-weight:800}
+.lab-content{text-align:left;max-width:460px;display:flex;flex-direction:column;gap:7px;max-height:calc(100dvh - 30px);overflow-y:auto!important;overscroll-behavior:contain}
+.lab-content h2{font-size:19px;margin:3px 0}
+.lab-content p{margin:0;font-size:11px;line-height:1.5}
+.lab-head{display:flex;justify-content:space-between;align-items:start;gap:8px}
+#lab-close{font-size:25px;line-height:1;width:33px;height:33px;border:1px solid #6f948e;border-radius:7px;background:#183237;color:#fff}
+.lab-bank{border-radius:8px;background:#112d30;border:1px solid #567c78;padding:7px 10px;color:#d6f6bf;font-size:12px;display:flex;align-items:center;gap:6px}
+.lab-bank strong{font-size:15px}.lab-bank small{margin-left:auto;color:#9bb7af;font-size:10px}
+.lab-doctrines{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.lab-option{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:3px;padding:8px;border-radius:8px;border:1px solid #4b6d6b;background:#173638;color:#e7f2ec;min-width:0}
+.lab-option strong{font-size:13px;line-height:1.3}.lab-option small{font-size:10px;color:#d4dfa0}.lab-option span{font-size:10px;line-height:1.4;color:#b4ccc7}
+.lab-option.chosen{border:2px solid #d3eb85;background:#2c4c3f;padding:7px}
+.lab-option.completed{border-color:#537b5d;background:#1a3735}
+.lab-option:disabled:not(.chosen):not(.completed){opacity:.55}
+.lab-separator{font:700 11px Rajdhani,sans-serif;letter-spacing:1.5px;color:#b8dfca;border-top:1px solid #44625d;padding-top:7px}
+.lab-research{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+.lab-research .lab-option{min-height:86px;padding:7px 5px}
+.lab-research .lab-option strong{font-size:11px}
+.lab-research .lab-option span{font-size:9px}
+#lab-notice{font-size:11px;color:#d2f69a;min-height:14px;text-align:center}
+.result-salvage{font-weight:800;color:#d9f3a4;margin:10px 0}
+.lab-launch{width:100%;border:1px solid #9bcc9f;border-radius:8px;background:#1b403f;color:#d9f3a4;padding:10px;font-size:12px;font-weight:800}
 #repair-button{border:1px solid #84b9a5;background:#22413b;color:#d9ffe5;font-weight:800}
 #repair-button:disabled{opacity:.4}
 .mobile-command-dock #airstrike-button{font-size:10px}
@@ -387,3 +411,4 @@ body{position:fixed;inset:0}
 .evolution-targets{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:3px;margin:1px 0 5px}
 .evolution-target{min-width:0;min-height:29px;border-radius:5px;border:1px solid #597c79;background:#1b363c;color:#aacfc8;font-size:10px;font-weight:800;padding:2px}
 .evolution-target.selected{background:#a2e5c6;color:#15332d;border-color:#e9ffd7}
+
