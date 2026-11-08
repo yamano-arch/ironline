@@ -396,6 +396,11 @@ body{position:fixed;inset:0}
 .fusion-codex{border:1px solid #487b73;border-radius:7px;background:#0f2a2f;padding:7px;display:flex;flex-direction:column;gap:3px}
 .fusion-codex strong{font-size:11px;color:#b4ffe3}
 .fusion-codex span{font-size:10px;color:#d0dfd6;line-height:1.45}
+.intel-box .story-preview{font-size:10px;color:#9bedd5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;min-width:0}
+.story-codex{border:1px solid #3d6d69;border-radius:7px;background:#102b30;padding:7px;color:#c8e5dc}
+.story-codex summary{font-size:11px;font-weight:800;cursor:pointer;color:#a4edcf;list-style-position:inside}
+.story-codex #story-log{max-height:180px;overflow:auto;margin-top:7px;padding:0 4px}
+.story-codex #story-log p{font-size:10px;line-height:1.55;padding:4px 0;border-bottom:1px solid #34534b}
 .lab-option:disabled:not(.chosen):not(.completed){opacity:.55}
 .lab-separator{font:700 11px Rajdhani,sans-serif;letter-spacing:1.5px;color:#b8dfca;border-top:1px solid #44625d;padding-top:7px}
 .lab-research{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
