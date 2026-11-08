@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0c161c">
   <title>IRONLINE — 渓谷防衛戦</title>
-  <link rel="stylesheet" href="./style.css?v=2.4">
+  <link rel="stylesheet" href="./style.css?v=2.5.0">
 </head>
 <body>
 <div id="ironline" class="game-shell">
@@ -13,7 +13,7 @@
     <div class="brand">
       <span class="brand-mark">◆</span>
       <span>IRONLINE</span>
-      <span class="version">ALPHA 2.4.2</span>
+      <span class="version">ALPHA 2.5.0</span>
     </div>
 
     <div class="mission-name">
@@ -108,6 +108,7 @@
       <div class="intel-box">
         <small>ENEMY INTELLIGENCE / 次の敵部隊</small>
         <strong id="enemy-intel">偵察中…</strong>
+        <span id="story-preview" class="story-preview">📡 最終防衛線、通信待機中</span>
         <span id="build-summary">選択した戦術で部隊を強化しよう</span>
       </div>
       <button id="airstrike-button" class="airstrike-button" type="button" disabled>✈ 航空爆撃 <span id="strike-charge">50%</span></button>
@@ -173,6 +174,7 @@
       <p>出撃前にドクトリンを選択。強みには必ず代償がある。研究は控えめな永続強化。</p>
       <div id="lab-doctrines" class="lab-doctrines"></div>
       <div class="fusion-codex"><strong>複合連携 / 140以内に異種兵器を配置</strong><span>MG＋HE 焼夷弾幕　 MG＋MS 追尾連装　 MG＋EW 妨害射撃</span><span>HE＋MS 破片散弾　 HE＋EW EMP榴弾　 MS＋EW 標的捕捉</span></div>
+      <details class="story-codex"><summary>📡 戦場通信記録 / STORY LOG</summary><div id="story-log">記録は出撃後に解放されます。</div></details>
       <div class="lab-separator">TECH RESEARCH / 研究開発</div>
       <div id="lab-research" class="lab-research"></div>
       <div id="lab-notice" aria-live="polite"></div>
@@ -181,7 +183,7 @@
 </div>
 
 
-<script src="./script.js?v=2.4.2" defer></script>
+<script src="./script.js?v=2.5.0" defer></script>
 </body>
 </html>
 
