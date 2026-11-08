@@ -393,6 +393,9 @@ body{position:fixed;inset:0}
 .lab-option strong{font-size:13px;line-height:1.3}.lab-option small{font-size:10px;color:#d4dfa0}.lab-option span{font-size:10px;line-height:1.4;color:#b4ccc7}
 .lab-option.chosen{border:2px solid #d3eb85;background:#2c4c3f;padding:7px}
 .lab-option.completed{border-color:#537b5d;background:#1a3735}
+.fusion-codex{border:1px solid #487b73;border-radius:7px;background:#0f2a2f;padding:7px;display:flex;flex-direction:column;gap:3px}
+.fusion-codex strong{font-size:11px;color:#b4ffe3}
+.fusion-codex span{font-size:10px;color:#d0dfd6;line-height:1.45}
 .lab-option:disabled:not(.chosen):not(.completed){opacity:.55}
 .lab-separator{font:700 11px Rajdhani,sans-serif;letter-spacing:1.5px;color:#b8dfca;border-top:1px solid #44625d;padding-top:7px}
 .lab-research{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
