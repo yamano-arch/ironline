@@ -51,6 +51,25 @@
   let shockwaves=[],screenFlash=0,combo=0,comboClock=0,missionBanner=0,ambientTime=0;
   const unlockAt={machinegun:0,cannon:1,missile:2,radar:3};
   const unlocked=type=>state.wave>=unlockAt[type];
+  // Story advances with combat, never opens a blocking dialogue or pauses the game.
+  const STORY=[
+    {wave:1,code:"01 / 最終防衛線",speaker:"管制官ミナ",line:"避難列車の通過まで持ちこたえて。峡谷を抜かせないで。"},
+    {wave:2,code:"02 / 速すぎる敵影",speaker:"偵察兵レン",line:"敵はこっちの配置を読んでる。高速車両が来るぞ。"},
+    {wave:3,code:"03 / 装甲の影",speaker:"整備長ガク",line:"徹甲弾の備蓄は少ない。砲台の置き方で稼いでくれ。"},
+    {wave:4,code:"04 / 空の異変",speaker:"管制官ミナ",line:"ドローン反応多数。敵は地上戦だけじゃない。"},
+    {wave:5,code:"05 / 第一突破部隊",speaker:"司令部",line:"敵指揮官を確認。これがただの襲撃なら、なぜここまで執拗なのか。"},
+    {wave:6,code:"06 / 消えた通信",speaker:"偵察兵レン",line:"後方基地からの連絡が途絶えた。援軍は来ないかもしれない。"},
+    {wave:8,code:"07 / 敵の目的",speaker:"管制官ミナ",line:"敵は基地じゃなく、地下の旧通信施設を狙ってる。"},
+    {wave:10,code:"08 / 友軍識別信号",speaker:"整備長ガク",line:"待て、敵の指揮系統に友軍の識別コードが混じってるぞ。"},
+    {wave:12,code:"09 / 封印命令",speaker:"司令部",line:"旧通信施設の調査を禁ずる。防衛に専念せよ。理由は伝えられない。"},
+    {wave:15,code:"10 / 裏切りの輪郭",speaker:"偵察兵レン",line:"敵は暴走じゃない。誰かが命令してる。しかも内側から。"},
+    {wave:17,code:"11 / 避難列車",speaker:"管制官ミナ",line:"列車は最後の橋に入った。あと少しだけ、道を守って。"},
+    {wave:19,code:"12 / 最後の命令",speaker:"司令部",line:"旧施設の全記録を消去せよ。……従うかどうかは、君に任せる。"},
+    {wave:20,code:"13 / 鉄の夜明け",speaker:"管制官ミナ",line:"最終部隊接近。街の夜明けを、この防衛線でつくろう。"}
+  ];
+  const storyAt=n=>STORY.find(s=>s.wave===n);
+  const storyLead=n=>STORY.filter(s=>s.wave<=n).slice(-1)[0];
+  let loggedStoryWave=-1;
 
   // Local-only progression: no account, analytics SDK, or personal data collection.
   const SAVE_KEY="ironline_commander_v1";
@@ -130,6 +149,7 @@
     towers = []; enemies = []; bullets = []; effects = [];
     selectedType = "machinegun";
     selectedPad = -1;
+    loggedStoryWave=-1;
     draftForWave=0;strikeAiming=false;strikeRings=[];combatTexts=[];kick=0;smokes=[];flashes=[];beams=[];shockwaves=[];screenFlash=0;combo=0;comboClock=0;missionBanner=0;ambientTime=0;
     $("draft-modal").classList.add("hidden");
     $("wave-alert").classList.add("hidden");
@@ -312,7 +332,8 @@
     state.queue=waveKinds(n);
     state.spawnedThisWave=0;
     state.spawnTimer=.16;state.paused=false;
-    notice("WAVE "+n+" — "+waveProfile(n).label+(state.operationName?" ／ "+state.operationName:""));
+    const dispatch=storyAt(n);
+    notice(dispatch?"📡 "+dispatch.speaker+"："+dispatch.line:"WAVE "+n+" — "+waveProfile(n).label);
     missionBanner=2.25;screenFlash=.17;
     $("wave-alert").textContent="WAVE "+String(n).padStart(2,"0")+" // "+waveProfile(n).label;
     $("wave-alert").classList.remove("hidden");
@@ -811,8 +832,8 @@
     $("result-title").textContent=win?
       "MISSION COMPLETE":"MISSION FAILED";
     $("result-description").textContent=win?
-      "全20ウェーブを防衛しました！":
-      "基地が陥落しました";
+      "避難列車は峡谷を突破。旧施設の謎は残った——次章へ続く。":
+      "防衛線は崩壊した。通信記録を携え、もう一度作戦を立て直そう。";
 
     const stars=state.hp===state.maxHp?3:state.hp>=11?2:1;
     $("result-stats").textContent=
@@ -1288,6 +1309,22 @@
     $("enemy-intel").textContent=state.active?
       "交戦中："+waveProfile(state.wave).label:
       "WAVE "+(state.wave+1)+"： "+profile.label+" / 約"+(profile.unitCount+(profile.boss?1:0))+"体";
+    const dispatch=storyAt(state.wave+1);
+    const storyPreview=$("story-preview");
+    if(storyPreview)storyPreview.textContent=state.active?
+      (storyLead(state.wave)?"📡 "+storyLead(state.wave).speaker+"："+storyLead(state.wave).line:""):
+      (dispatch?"📡 次の通信："+dispatch.code:"📡 "+(storyLead(state.wave)?.code||"01 / 最終防衛線"));
+    const storyLog=$("story-log");
+    if(storyLog&&loggedStoryWave!==state.wave){
+      loggedStoryWave=state.wave;
+      storyLog.replaceChildren();
+      STORY.filter(s=>s.wave<=state.wave).forEach(s=>{
+        const entry=document.createElement("p");
+        entry.textContent="WAVE "+String(s.wave).padStart(2,"0")+"｜"+s.speaker+"「"+s.line+"」";
+        storyLog.append(entry);
+      });
+      if(!state.wave){const entry=document.createElement("p");entry.textContent="記録は出撃後に解放されます。";storyLog.append(entry);}
+    }
     $("build-summary").textContent=state.usedTactics.length?
       "採用作戦 "+state.usedTactics.length+"回 ｜ "+state.usedTactics.slice(-2).join("・"):
       "敵を倒して経験値をため、兵器を進化させよう。進化で攻撃方法が変わる！";
