@@ -1409,12 +1409,7 @@
   dock.appendChild(dockActions);
   dock.appendChild(panel.querySelector("#start-wave"));
   document.querySelector(".game-shell").appendChild(dock);
-    const quickNext=document.createElement("button");
-  quickNext.id="quick-next-wave";
-  quickNext.type="button";
-  quickNext.className="quick-next-wave hidden";
-  quickNext.addEventListener("click",startWave);
-  document.querySelector(".battle-area").appendChild(quickNext);
+  // Keep the map entirely tappable between waves. The dock already has a start button.
     $("start-wave").onclick=startWave;
   $("upgrade-button").onclick=upgradeTower;
   $("sell-button").onclick=sellTower;
