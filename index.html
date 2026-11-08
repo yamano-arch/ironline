@@ -13,7 +13,7 @@
     <div class="brand">
       <span class="brand-mark">◆</span>
       <span>IRONLINE</span>
-      <span class="version">ALPHA 2.2</span>
+      <span class="version">ALPHA 2.3</span>
     </div>
 
     <div class="mission-name">
@@ -159,14 +159,28 @@
       <h2 id="result-title">MISSION COMPLETE</h2>
       <p id="result-description">防衛作戦終了</p>
       <div id="result-stats"></div>
+      <div id="result-salvage" class="result-salvage"></div>
+      <button id="result-lab-button" class="lab-launch" type="button">◆ 研究所で次の作戦を準備</button>
       <button id="retry-button" class="start-button" type="button">
         再挑戦
       </button>
     </div>
   </div>
+  <div id="lab-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="lab-title">
+    <div class="modal-content lab-content">
+      <div class="lab-head"><div><div class="modal-eyebrow">COMMAND CENTER / 永続研究</div><h2 id="lab-title">司令部・作戦ドクトリン</h2></div><button id="lab-close" type="button" aria-label="閉じる">×</button></div>
+      <div class="lab-bank">研究データ <strong id="lab-points">0</strong> <small id="lab-best">最高到達 —</small></div>
+      <p>出撃前にドクトリンを選択。強みには必ず代償がある。研究は控えめな永続強化。</p>
+      <div id="lab-doctrines" class="lab-doctrines"></div>
+      <div class="lab-separator">TECH RESEARCH / 研究開発</div>
+      <div id="lab-research" class="lab-research"></div>
+      <div id="lab-notice" aria-live="polite"></div>
+    </div>
+  </div>
 </div>
 
 
-<script src="./script.js?v=2.2" defer></script>
+<script src="./script.js?v=2.3" defer></script>
 </body>
 </html>
+
