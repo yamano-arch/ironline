@@ -141,6 +141,21 @@
 
   const distance = (a,b) => Math.hypot(a.x-b.x,a.y-b.y);
   const towerAt = index => towers.find(t => t.pad === index);
+  const FUSIONS={
+    "cannon+machinegun":{name:"焼夷弾幕",tag:"HE×MG",color:"#ffb36d",desc:"機関銃の一定弾数が小範囲に延焼"},
+    "machinegun+missile":{name:"追尾連装",tag:"MG×MS",color:"#ffe28a",desc:"機関銃が対装甲小型ロケットを追加発射"},
+    "machinegun+radar":{name:"妨害射撃",tag:"MG×EW",color:"#8cfff1",desc:"機関銃が命中した敵を減速させる"},
+    "cannon+missile":{name:"破片散弾",tag:"HE×MS",color:"#ffcb8b",desc:"榴弾砲の爆発範囲が広がる"},
+    "cannon+radar":{name:"EMP榴弾",tag:"HE×EW",color:"#8ae5ff",desc:"榴弾砲の爆発が敵を減速させる"},
+    "missile+radar":{name:"標的捕捉",tag:"MS×EW",color:"#a1e8ff",desc:"ミサイルが戦車・ドローンを狙い撃つ"}
+  };
+  function fusionFor(t){
+    if(!t||t.type==="radar")return null;
+    const pairs=towers.filter(o=>o!==t&&distance(o,t)<=140&&FUSIONS[[o.type,t.type].sort().join("+")]);
+    pairs.sort((a,b)=>distance(a,t)-distance(b,t));
+    const partner=pairs[0];if(!partner)return null;
+    return {partner,info:FUSIONS[[partner.type,t.type].sort().join("+")]};
+  }
 
   function notice(message) {
     state.note = message;
@@ -157,7 +172,7 @@
       cooldown:0, angle:-Math.PI/2,
       pierce:state.globalPierce, critical:0, blast:0,
       chain:false, slow:false, mods:[],
-      evolution:null, branch:null, awakened:false, kills:0,spin:0,recoil:0,glow:0
+      evolution:null, branch:null, awakened:false, kills:0,spin:0,recoil:0,glow:0,comboShots:0,comboCooldown:0
     };
   }
 
@@ -176,8 +191,15 @@
         return;
       }
       state.money -= price;
-      towers.push(makeTower(index, selectedType));
-      notice(DEF[selectedType].name + "を設置！");sfx("unlock");
+      const placed=makeTower(index, selectedType);
+      towers.push(placed);
+      const newFusion=fusionFor(placed);
+      if(newFusion){
+        notice("⚡ 複合連携発動："+newFusion.info.name+"！");
+        shockwaves.push({x:placed.x,y:placed.y,r:4,max:67,life:.65,color:newFusion.info.color});
+        combatTexts.push({x:placed.x,y:placed.y-34,text:newFusion.info.name,life:1.4,color:newFusion.info.color});
+      }else notice(DEF[selectedType].name + "を設置！");
+      sfx("unlock");
     }
 
     updateUI();
@@ -416,10 +438,14 @@
        (e.kind==="tank"?.48:e.kind==="drone"?.55:e.kind==="car"?.72:1)):
       source.type==="cannon"?(e.kind==="infantry"?1.25:e.kind==="car"?1.2:e.kind==="drone"?.38:.8):
       source.type==="missile"?(e.kind==="tank"?2.0:e.kind==="drone"?1.8:e.kind==="boss"?1.6:.75):1;
-    const actual=amount*(1-armor)*crit*matchup;
+    const combo=fusionFor(source);
+    const bonus=combo&&combo.info.name==="標的捕捉"&&(e.kind==="tank"||e.kind==="drone")?1.24:1;
+    const actual=amount*(1-armor)*crit*matchup*bonus;
     e.hp -= actual;
     if(actual>15 && Math.random()<.35)combatTexts.push({x:e.x,y:e.y-18,text:"-"+Math.round(actual),life:.65,color:crit>1?"#ffe88d":"#e7f2d2"});
     if(source.slow)e.slowTime=Math.max(e.slowTime,1.5);
+    if(combo&&combo.info.name==="妨害射撃")e.slowTime=Math.max(e.slowTime,.55);
+    if(combo&&combo.info.name==="EMP榴弾")e.slowTime=Math.max(e.slowTime,.9);
 
     if(e.hp<=0){
       e.alive=false;
@@ -457,6 +483,14 @@
     t.angle=Math.atan2(target.y-t.y,target.x-t.x);
     const d=DEF[t.type];
     const damage=d.dmg*t.power;
+    const fusion=fusionFor(t);
+    if(fusion&&fusion.info.name==="追尾連装"&&t.comboCooldown<=0){
+      t.comboCooldown=2.8;
+      const armored=enemies.filter(e=>e.alive&&distance(e,t)<t.range).sort((a,b)=>(b.kind==="tank")-(a.kind==="tank"))[0]||target;
+      bullets.push({x:t.x,y:t.y,px:t.x,py:t.y,targetId:armored.id,tx:armored.x,ty:armored.y,
+        speed:330,damage:60*t.power,source:t,type:"missile",special:"hunter",color:"#ffe593",alive:true});
+      combatTexts.push({x:t.x,y:t.y-35,text:"追尾連装",life:.65,color:"#ffe28a"});
+    }
     if(t.type==="machinegun"&&(t.branch==="rail"||t.branch==="tesla")){
       t.recoil=1;t.glow=.25;sfx("boom");
       shockwaves.push({x:target.x,y:target.y,r:4,max:t.branch==="rail"?40:25,life:.3,color:t.branch==="rail"?"#7cf5ff":"#d2abff"});
@@ -529,11 +563,20 @@
     burst(b.x,b.y,b.type==="missile"?"#ff964c":"#ffcf79",
       b.type==="machinegun"?4:18);
 
-    if(target && target.alive)hurt(target,b.damage,b.source);
+    if(target && target.alive)hurt(target,b.damage,b.special==="hunter"?{...b.source,type:"missile"}:b.source);
 
     let radius = b.type==="cannon"?37:
                  b.type==="missile"?19:0;
     radius += b.source.blast;
+    const combo=fusionFor(b.source);
+    if(combo&&combo.info.name==="破片散弾"&&b.type==="cannon")radius+=13;
+    if(combo&&combo.info.name==="焼夷弾幕"&&b.type==="machinegun"){
+      b.source.comboShots++;
+      if(b.source.comboShots%7===0){
+        enemies.forEach(e=>{if(e.alive&&e!==target&&Math.hypot(e.x-b.x,e.y-b.y)<25)hurt(e,b.damage*.24,b.source)});
+        burst(b.x,b.y,"#ff8e50",9);
+      }
+    }
 
     if(radius>0){
       enemies.forEach(e=>{
@@ -816,6 +859,7 @@
     });
 
     towers.forEach(t=>{
+      t.comboCooldown=Math.max(0,t.comboCooldown-dt);
       t.cooldown-=dt;
       if(t.cooldown>0)return;
       const target=findTarget(t);
@@ -1031,6 +1075,14 @@
     }
     ctx.restore();
     ctx.strokeStyle=color;ctx.lineWidth=1.7;ctx.strokeRect(-20,-21,40,38);
+    const synergy=fusionFor(t);
+    if(synergy){
+      ctx.strokeStyle=synergy.info.color;ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(0,0,29+Math.sin(ambientTime*3)*1.5,0,Math.PI*2);ctx.stroke();
+      rounded(-15,-31,30,11,3,"#102c34");
+      ctx.fillStyle=synergy.info.color;ctx.font="bold 9px Rajdhani,sans-serif";ctx.textAlign="center";
+      ctx.fillText(synergy.info.tag,0,-23);
+    }
     if(t.evolution||t.branch){
       ctx.strokeStyle=t.awakened?"#ffdd75":t.branch==="tesla"?"#ae9bff":t.branch==="rail"?"#72eaff":"#fcb85d";ctx.lineWidth=3;
       ctx.beginPath();ctx.arc(0,0,25,0,Math.PI*2);ctx.stroke();
@@ -1102,6 +1154,11 @@
       ctx.beginPath();ctx.arc(selected.x,selected.y,selected.range,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
     }
 
+    towers.forEach(t=>{
+      const fusion=fusionFor(t);if(!fusion)return;
+      ctx.save();ctx.strokeStyle=fusion.info.color;ctx.globalAlpha=.24+Math.sin(ambientTime*3)*.08;
+      ctx.lineWidth=2;ctx.setLineDash([5,6]);line(t.x,t.y,fusion.partner.x,fusion.partner.y,fusion.info.color,2);ctx.restore();
+    });
     towers.forEach(drawTower);
     enemies.forEach(drawEnemy);
 
@@ -1273,14 +1330,18 @@
         coming%4===0?"ドローン / ミサイルで対空":
         coming%3===0?"重装甲 / ミサイル・徹甲弾":
         "混成部隊 / 複数兵器を組み合わせよう";
+      const combos=towers.filter(t=>fusionFor(t)).length;
+      const selectedLink=fusionFor(towerAt(selectedPad));
       dockStatus.textContent=state.choosing?"兵器進化を選択中":
+        selectedLink?"⚡ 連携発動："+selectedLink.info.name+" / "+selectedLink.info.desc:
         state.active?"WAVE "+state.wave+" "+waveProfile(state.wave).label+"  •  配置・強化可能":
-        "次WAVE "+coming+"： "+advice;
+        "次WAVE "+coming+"： "+advice+(combos?" / 連携 "+combos:" / 近くに異種兵器で連携");
     }
-        $("tower-info").textContent=t?
+    $("tower-info").textContent=t?
       DEF[t.type].name+" Lv."+t.level+
       " ｜ 改造 "+t.mods.length+"/"+(t.type==="machinegun"?2:3)+
-      (t.evolution?" ｜ ★ "+t.evolution:""):
+      (t.evolution?" ｜ ★ "+t.evolution:"")+
+      (fusionFor(t)?" ｜ 連携："+fusionFor(t).info.name:""):
       "配置可能なマスをタップしてください";
   }
 
