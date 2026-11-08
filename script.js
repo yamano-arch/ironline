@@ -1369,10 +1369,12 @@
         "混成部隊 / 複数兵器を組み合わせよう";
       const combos=towers.filter(t=>fusionFor(t)).length;
       const selectedLink=fusionFor(towerAt(selectedPad));
+      const chapter=storyAt(state.active?state.wave:coming);
+      const radio=chapter?"📡 "+chapter.code+" / ":"";
       dockStatus.textContent=state.choosing?"兵器進化を選択中":
         selectedLink?"⚡ 連携発動："+selectedLink.info.name+" / "+selectedLink.info.desc:
-        state.active?"WAVE "+state.wave+" "+waveProfile(state.wave).label+"  •  配置・強化可能":
-        "次WAVE "+coming+"： "+advice+(combos?" / 連携 "+combos:" / 近くに異種兵器で連携");
+        state.active?radio+"WAVE "+state.wave+" "+waveProfile(state.wave).label+"  •  配置・強化可能":
+        radio+"次WAVE "+coming+"： "+advice+(combos?" / 連携 "+combos:" / 近くに異種兵器で連携");
     }
     $("tower-info").textContent=t?
       DEF[t.type].name+" Lv."+t.level+
