@@ -86,7 +86,7 @@
   let state, towers, enemies, bullets, effects;
   let selectedType, selectedPad, lastTime = 0,hoverPad=-1,pressedPad=-1;
   let nextEnemyId = 1, kick=0, beams=[];
-  let smokes=[],flashes=[],soundOn=true,audio=null;
+  let smokes=[],flashes=[],casings=[],soundOn=true,audio=null;
   let shockwaves=[],screenFlash=0,combo=0,comboClock=0,missionBanner=0,ambientTime=0;
   const unlockAt={machinegun:0,cannon:1,flak:2,missile:3,radar:4};
   // Learned weapons remain available on later fronts; equipment knowledge is progress.
@@ -220,7 +220,7 @@
     selectedPad = -1;
     hoverPad=-1;pressedPad=-1;
     loggedStoryWave=-1;
-    draftForWave=0;strikeAiming=false;strikeRings=[];combatTexts=[];kick=0;smokes=[];flashes=[];beams=[];shockwaves=[];screenFlash=0;combo=0;comboClock=0;missionBanner=0;ambientTime=0;
+    draftForWave=0;strikeAiming=false;strikeRings=[];combatTexts=[];kick=0;smokes=[];flashes=[];casings=[];beams=[];shockwaves=[];screenFlash=0;combo=0;comboClock=0;missionBanner=0;ambientTime=0;
     $("draft-modal").classList.add("hidden");
     $("wave-alert").classList.add("hidden");
     $("strike-hint").classList.add("hidden");
@@ -706,7 +706,21 @@
       damage:damage*(t.type==="flak"?.55:t.type==="missile"&&t.branch==="swarm"?.59:count>1?.43:1),source:t,type:t.type,
       color:d.color,alive:true
     });}
-    flashes.push({x:t.x+Math.cos(t.angle)*30,y:t.y+Math.sin(t.angle)*30,life:.14});
+    const muzzleLength=t.type==="missile"?24:t.type==="flak"?49:t.type==="cannon"?47:43;
+    flashes.push({x:t.x+Math.cos(t.angle)*muzzleLength,y:t.y+Math.sin(t.angle)*muzzleLength,
+      life:.19,size:t.type==="cannon"?20:t.type==="missile"?17:t.type==="flak"?12:9,
+      color:t.type==="flak"?"#99faff":t.type==="missile"?"#ff9e52":"#ffe49a",angle:t.angle});
+    if(t.type!=="radar"){
+      const side=t.angle+Math.PI/2;
+      for(let j=0;j<(t.type==="machinegun"?Math.min(count,5):t.type==="flak"?2:1);j++){
+        casings.push({x:t.x+Math.cos(side)*11,y:t.y+Math.sin(side)*11,
+          vx:Math.cos(side)*(35+Math.random()*45)+(Math.random()-.5)*18,
+          vy:Math.sin(side)*(35+Math.random()*45)-24,
+          angle:Math.random()*5,spin:(Math.random()-.5)*12,
+          life:.75,max:.75,color:t.type==="flak"?"#a7e7e5":"#eac17a",size:t.type==="cannon"?6:3});
+      }
+      if(casings.length>130)casings.splice(0,casings.length-130);
+    }
     if(t.type==="machinegun"&&t.branch==="gatling"){
       for(let n=0;n<(t.awakened?8:4);n++){
         const jitter=(Math.random()-.5)*(t.awakened?34:19);
@@ -794,6 +808,10 @@
       }else{
         b.x+=dx/length*step;
         b.y+=dy/length*step;
+        if(b.type==="missile"&&Math.random()<.75){
+          smokes.push({x:b.x+(Math.random()-.5)*6,y:b.y+(Math.random()-.5)*6,r:3+Math.random()*4,life:.30+Math.random()*.18});
+          if(smokes.length>190)smokes.splice(0,smokes.length-190);
+        }
       }
     });
     bullets=bullets.filter(b=>b.alive);
@@ -814,6 +832,8 @@
     if(comboClock>0){comboClock-=dt;if(comboClock<=0)combo=0;}
     smokes.forEach(p=>{p.life-=dt;p.r+=dt*17;p.y-=dt*7;});smokes=smokes.filter(p=>p.life>0);
     flashes.forEach(p=>p.life-=dt);flashes=flashes.filter(p=>p.life>0);
+    casings.forEach(p=>{p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=115*dt;p.vx*=.985;p.angle+=p.spin*dt;});
+    casings=casings.filter(p=>p.life>0);
     beams.forEach(p=>p.life-=dt);beams=beams.filter(p=>p.life>0);
     towers.forEach(t=>{t.recoil=Math.max(0,t.recoil-dt*8);t.glow=Math.max(0,t.glow-dt);});
     kick=Math.max(0,kick-dt*17);
@@ -1441,21 +1461,57 @@
     ctx.fillText(padTrait(hoverPad).name+"："+padTrait(hoverPad).desc,Math.max(83,Math.min(W-83,x)),Math.max(23,y-40));
     ctx.restore();
   }
+  // Small-scale painted miniature materials. Keep broad highlights visible at phone size.
+  function steelPlate(x,y,w,h,r,top,bottom,edge="#172c32"){
+    const metal=ctx.createLinearGradient(x,y,x+w*.45,y+h);
+    metal.addColorStop(0,top);metal.addColorStop(.43,top);
+    metal.addColorStop(1,bottom);
+    rounded(x,y+2,w,h,r,edge);
+    rounded(x,y,w,h-2,r,metal);
+    line(x+4,y+3,x+w-6,y+3,"#ffffff55",1.5);
+    line(x+w-3,y+5,x+w-3,y+h-5,"#00191d77",2);
+  }
+  function rivet(x,y,color="#ecf5d7"){
+    circle(x+1,y+1,2.1,"#081c22");circle(x,y,1.6,color);
+    circle(x-.5,y-.5,.55,"#ffffff");
+  }
+  function metalBar(x,y,w,h,top,bottom){
+    const g=ctx.createLinearGradient(x,y,x+w,y);
+    g.addColorStop(0,bottom);g.addColorStop(.22,top);g.addColorStop(.6,top);g.addColorStop(1,bottom);
+    rounded(x,y,w,h,2,g);
+    line(x+2,y+2,x+w-2,y+2,"#ffffff88",1);
+  }
+  function radialLamp(x,y,r,color){
+    ctx.save();ctx.shadowColor=color;ctx.shadowBlur=11;
+    circle(x,y,r+2,"#122932");circle(x,y,r,color);
+    circle(x-r*.24,y-r*.27,r*.36,"#fffef2");ctx.restore();
+  }
   function drawTower(t) {
     const color=t.type==="radar"?"#5ed9e5":t.type==="flak"?"#88e7ff":t.type==="missile"?"#f3bd75":t.type==="cannon"?"#f2c77a":"#9fe1c1";
     ctx.save();ctx.translate(t.x,t.y);
-    ctx.shadowColor="#010d0caa";ctx.shadowBlur=10;ctx.shadowOffsetY=7;
-    rounded(-22,-18,44,40,6,"#112a29");
-    rounded(-20,-21,40,38,5,"#335952");
+    // Chassis does not rotate. Turrets swivel independently and genuinely recoil.
+    ctx.save();ctx.scale(1,1.02);
+    ctx.shadowColor="#06131bd9";ctx.shadowBlur=13;ctx.shadowOffsetY=9;
+    rounded(-23,-20,46,45,8,"#0b222c");
     ctx.shadowBlur=0;ctx.shadowOffsetY=0;
-    // Steel chassis with faction color and readable identity.
-    rounded(-17,-17,34,29,4,"#62857a");
-    rounded(-13,-14,26,22,3,"#2b514b");
-    polygon([[-20,14],[-13,19],[13,19],[20,14]],"#152c2b");
-    ctx.fillStyle="#8bada2";ctx.fillRect(-21,-14,3,24);ctx.fillRect(18,-14,3,24);
-    ctx.save();ctx.rotate(t.angle+Math.PI/2);ctx.translate(0,t.recoil*7);
+    for(const side of [-1,1]){
+      const x=side<0?-25:18;
+      steelPlate(x,-19,7,40,3,"#4e6465","#192b34");
+      for(let y=-14;y<20;y+=7)line(x+1,y,x+6,y,"#a4b7a4",1.4);
+    }
+    steelPlate(-20,-20,40,41,6,"#7b9487","#355f5c");
+    steelPlate(-15,-14,30,27,4,"#587a74","#253f49");
+    polygon([[-19,15],[-13,22],[13,22],[19,15]],"#203b3f","#9bb1a2",1);
+    [-16,16].forEach(x=>{rivet(x,-16);rivet(x,17);});
+    rounded(-13,16,26,3,1,"#c7d8bc");
+    ctx.restore();
+    ctx.save();ctx.rotate(t.angle+Math.PI/2);ctx.translate(0,t.recoil*5);
+    // Cast circular bearing and segmented retaining bolts.
+    circle(0,0,18,"#172f37");circle(0,-2,16,"#89a79d");circle(0,-3,13,"#294b55");
+    for(let k=0;k<8;k++){const a=k*Math.PI/4;rivet(Math.cos(a)*15,Math.sin(a)*15-2,"#bcd0bb");}
     if(t.type==="machinegun"){
-      rounded(-12,-12,24,20,4,"#214440");
+      steelPlate(-13,-13,26,24,6,"#90b59a","#315a52");
+      for(const x of [-11,11]){rivet(x,-9,"#ffe1a4");rivet(x,7,"#ffe1a4");}
       if(t.branch==="rail"){
         // Massive electric accelerator, entirely different silhouette from a gun.
         rounded(-15,-13,30,27,6,"#123b54");
@@ -1465,6 +1521,10 @@
         [-36,-24,-12].forEach(y=>{rounded(-15,y,30,5,2,"#1c4e71");circle(-13,y+2,3,"#7be5ff");circle(13,y+2,3,"#7be5ff")});
         circle(0,-54,7+Math.sin(ambientTime*10)*2,"#78e7ff");
         circle(0,-54,3,"#fff");
+        for(const x of [-16,16]){
+          steelPlate(x-4,-48,8,41,3,"#67bbd7","#1c586f");
+          [-40,-29,-18].forEach(y=>radialLamp(x,y,1.5,"#a7f6ff"));
+        }
       }else if(t.branch==="tesla"){
         // Two separated high-voltage coils on a compact generator.
         rounded(-16,-16,32,32,6,"#413c70");
@@ -1475,10 +1535,24 @@
           circle(x,-38,3,"#f8ecff");
         }
         for(let k=0;k<3;k++){const angle=ambientTime*3+k*Math.PI*2/3;circle(Math.cos(angle)*21,Math.sin(angle)*19-5,3,"#e6bcff");}
+        ctx.strokeStyle="#eee0ff";ctx.lineWidth=1.6;
+        for(let k=0;k<2;k++){
+          const y=-27-k*8;line(-13,y,0,y-5,"#d4b1ff",1.5);line(0,y-5,13,y,"#d4b1ff",1.5);
+        }
       }else{
       const barrels=t.awakened&&t.branch==="gatling"?8:t.branch==="gatling"?4:t.level>=5?4:t.level>=3?2:1;
       for(let k=0;k<barrels;k++){const x=(k-(barrels-1)/2)*(barrels>=8?4:7);
-        rounded(x-2,-33,4,29,1,"#d4e0c7");circle(x,-33,3,"#10282b");
+        rounded(x-3,-40,6,37,1,"#1b343c");
+        metalBar(x-2,-43,4,39,"#ecf1d6","#6d9a91");
+        circle(x,-42,3.6,"#152930");circle(x,-42,2,"#f0eac6");circle(x,-42,1,"#162b33");
+      }
+      if(barrels>=4){
+        for(const y of [-34,-19])steelPlate(-13,y,26,5,2,"#c5cf9e","#5b7769");
+        circle(0,-9,10,"#2c4549");circle(0,-9,7,"#b2c8a9");
+        const spin=ambientTime*(t.branch==="gatling"?17:5);
+        for(let k=0;k<4;k++){const a=spin+k*Math.PI/2;circle(Math.cos(a)*5,Math.sin(a)*5-9,2.3,"#446b68");}
+      }else{
+        steelPlate(-7,-20,14,13,3,"#9db8a9","#345f5a");
       }
       if(t.glow>0){circle(0,-35,8+t.glow*30,"#ffe49a");circle(0,-35,4,"#ffb43d");}
       rounded(-8,-11,16,13,3,t.branch==="rail"?"#77d6ec":t.branch==="tesla"?"#b7a4ff":"#91b8a3");
@@ -1486,17 +1560,22 @@
       if(t.branch==="tesla"){ctx.strokeStyle="#bcaaff";ctx.lineWidth=3;
         ctx.beginPath();ctx.arc(0,-18,17,Math.PI*1.05,Math.PI*1.95);ctx.stroke();circle(0,-33,5,"#e4d6ff");}
       }
+      radialLamp(-13,8,2.7,"#bdf3ab");radialLamp(13,8,2.7,"#bdf3ab");
     }else if(t.type==="cannon"){
-      rounded(-12,-15,24,32,5,"#243d37");
+      steelPlate(-15,-16,30,33,6,"#b2a77e","#555c51");
+      polygon([[-18,-8],[-11,-17],[11,-17],[18,-8],[17,7],[-17,7]],"#797b66","#d9cba1",1.6);
       const barrels=t.level>=5?2:1;
       for(let j=0;j<barrels;j++){
         const x=(j-(barrels-1)/2)*12;
-        rounded(x-6,-42,12,39,2,"#5d5248");
-        rounded(x-4,-45,8,36,2,"#d6be8b");
-        rounded(x-7,-40,14,7,2,"#ffedbe");
+        rounded(x-8,-43,16,43,4,"#27343a");
+        metalBar(x-6,-48,12,46,"#ecd4a0","#806f57");
+        steelPlate(x-8,-32,16,9,2,"#c5b18a","#4a5958");
+        circle(x,-47,7.5,"#f4dcaa");circle(x,-47,5.5,"#28353a");
+        circle(x-2,-49,1.7,"#aebdc0");
       }
-      rounded(-12,-10,24,20,5,"#8c9983");
+      steelPlate(-12,-10,24,20,5,"#c8c29d","#687c6b");
       circle(0,-6,6,"#506b5d");
+      radialLamp(-13,4,2.2,"#ffc870");radialLamp(13,4,2.2,"#ffc870");
       for(let j=0;j<4;j++){const a=j*Math.PI/2+ambientTime*.25;circle(Math.cos(a)*10,Math.sin(a)*10-5,2,"#fff4d3");}
       if(t.branch==="cluster"){
         for(const x of [-17,17]){rounded(x-4,-19,8,24,3,"#e8be72");circle(x,-18,4,"#fff1bd");}
@@ -1507,15 +1586,18 @@
       }
     }else if(t.type==="flak"){
       // Sweeping twin anti-air barrels with high-speed pulse coils.
-      rounded(-17,-18,34,34,5,"#1b4a57");
-      rounded(-12,-15,24,27,4,"#3b8391");
+      steelPlate(-18,-18,36,35,5,"#7ab8c1","#214d61");
+      steelPlate(-13,-16,26,26,4,"#55acbd","#1d495d");
       for(const x of [-10,10]){
-        rounded(x-5,-46,10,39,3,"#194c62");
-        rounded(x-3,-49,6,41,2,"#a6eef7");
-        for(let j=0;j<4;j++)rounded(x-7,-38+j*9,14,3,1,"#4e9db4");
-        circle(x,-48,4+Math.sin(ambientTime*10+x)*.8,"#ecffff");
+        rounded(x-6,-47,12,43,3,"#153d51");
+        metalBar(x-4,-54,8,48,"#d1fbff","#427b93");
+        for(let j=0;j<4;j++)steelPlate(x-7,-41+j*9,14,4,1,"#91e6f0","#316c86");
+        circle(x,-53,5,"#b5eaf2");circle(x,-53,3.1,"#133d50");
+        circle(x,-53,1.4,"#ecffff");
       }
-      rounded(-7,-9,14,15,4,"#143e51");circle(0,-8,5,"#72e7ff");
+      steelPlate(-11,-12,22,23,4,"#76c8d3","#21576a");
+      circle(0,-8,7,"#174255");radialLamp(0,-8,4.5,"#72e7ff");
+      for(const x of [-20,20]){polygon([[x-2,-13],[x,-24],[x+4,-13]],"#9de5e9");rivet(x,5,"#ceebf0");}
       if(t.branch==="skywall"){
         for(const x of [-23,23]){rounded(x-3,-24,6,32,2,"#abeffe");circle(x,-27,5,"#75dfff");}
         circle(0,-7,7+Math.sin(ambientTime*12)*2,"#d4fcff");
@@ -1527,17 +1609,23 @@
         }
       }
     }else if(t.type==="missile"){
-      rounded(-18,-18,36,33,4,"#223f3b");
+      steelPlate(-20,-18,40,35,5,"#aaa78c","#465b56");
+      steelPlate(-18,-23,36,38,4,"#879b8a","#263f4b");
+      polygon([[-17,-17],[0,-27],[17,-17],[17,6],[0,14],[-17,6]],"#586f6b","#d0c9a4",1);
       for(let ix=-1;ix<=1;ix++)for(let iy=0;iy<2;iy++){
         const x=ix*11,y=iy*12-13;
-        rounded(x-5,y-5,10,13,3,"#718984");
-        polygon([[x-4,y-1],[x,y-10],[x+4,y-1]],"#ffe0a2");
-        circle(x,y+1,3,"#b96244");
+        steelPlate(x-5,y-5,10,15,3,"#b8c5b2","#4b656a");
+        polygon([[x-4,y-1],[x,y-12],[x+4,y-1]],"#ffe1aa","#ca8057",1);
+        rounded(x-3,y-2,6,9,2,"#c66c48");
+        circle(x,y+5,2,"#2c4546");
       }
+      for(const x of [-17,17])radialLamp(x,12,2.5,"#ffc16e");
+      steelPlate(-16,10,32,7,2,"#d7cba5","#4f6666");
       if(t.branch==="bunker"){
-        rounded(-9,-29,18,28,4,"#40504a");
-        polygon([[-9,-23],[0,-41],[9,-23]],"#ffe2a2");
-        rounded(-5,-19,10,17,2,"#e78d4f");
+        steelPlate(-11,-30,22,33,4,"#b7ad88","#314958");
+        polygon([[-10,-25],[0,-47],[10,-25]],"#ffe3a7","#bd7953",2);
+        metalBar(-5,-28,10,27,"#edb878","#aa5b46");
+        for(const x of [-8,8])rivet(x,-8,"#ffe6ad");
       }
       if(t.branch==="swarm"){
         for(const x of [-23,23])for(const y of [-15,0]){
@@ -1546,11 +1634,27 @@
         }
       }
     }else{
-      rounded(-12,-13,24,20,4,"#224c55");
-      ctx.strokeStyle="#6ceaff";ctx.lineWidth=3;
-      ctx.beginPath();ctx.arc(0,-15,21,Math.PI*1.08,Math.PI*1.92);ctx.stroke();
-      line(0,-15,0,-32,"#a1fcff",2);
-      circle(0,-15,6,"#abf8fa");circle(0,-15,3,"#285463");
+      // Radar is a rotating emitter, not a gun: dish, antennas, scanning LEDs.
+      steelPlate(-17,-16,34,31,5,"#7cacb4","#24576b");
+      steelPlate(-12,-14,24,23,4,"#407d92","#193c54");
+      for(const x of [-17,17]){
+        metalBar(x-3,-39,6,35,"#d3faff","#44798c");
+        radialLamp(x,-40,3.5,"#9df9ff");
+      }
+      ctx.strokeStyle="#1b4356";ctx.lineWidth=9;
+      ctx.beginPath();ctx.arc(0,-17,22,Math.PI*1.05,Math.PI*1.95);ctx.stroke();
+      ctx.strokeStyle="#b2f7fc";ctx.lineWidth=5;
+      ctx.beginPath();ctx.arc(0,-17,22,Math.PI*1.05,Math.PI*1.95);ctx.stroke();
+      ctx.strokeStyle="#e8ffff";ctx.lineWidth=1.4;
+      ctx.beginPath();ctx.arc(0,-17,18,Math.PI*1.08,Math.PI*1.92);ctx.stroke();
+      for(let k=0;k<5;k++){
+        const x=(k-2)*8;line(x,-34,x*.6,-17,"#6be1ed",1);
+      }
+      line(0,-17,0,-34,"#ecffff",2);
+      circle(0,-17,8,"#18495d");radialLamp(0,-17,4.3,"#abf8fa");
+      const sweep=ambientTime*2.7;
+      const sx=Math.cos(sweep)*13,sy=Math.sin(sweep)*11-16;
+      line(0,-17,sx,sy,"#a5fff0a8",2.6);
       if(t.branch==="empfield"){
         ctx.strokeStyle="#a998ff";ctx.lineWidth=3;
         ctx.beginPath();ctx.arc(0,-15,27,Math.PI*1.08,Math.PI*1.92);ctx.stroke();
@@ -1564,7 +1668,12 @@
       }
     }
     ctx.restore();
-    ctx.strokeStyle=color;ctx.lineWidth=1.7;ctx.strokeRect(-20,-21,40,38);
+    // Tactical class LEDs, deliberately color-coded but never reliant on color alone.
+    for(const side of [-1,1]){
+      ctx.fillStyle=color;ctx.shadowColor=color;ctx.shadowBlur=5;
+      ctx.fillRect(side<0?-21:18,-17,3,11);
+    }
+    ctx.shadowBlur=0;
     const synergy=fusionFor(t);
     if(synergy){
       ctx.strokeStyle=synergy.info.color;ctx.lineWidth=2;
@@ -1710,8 +1819,13 @@
     });
     smokes.forEach(p=>{ctx.save();ctx.globalAlpha=Math.max(0,Math.min(.45,p.life*.5));
       circle(p.x,p.y,p.r,"#e0d6bf");ctx.restore();});
+    casings.forEach(p=>{ctx.save();ctx.globalAlpha=Math.min(1,p.life*3);ctx.translate(p.x,p.y);ctx.rotate(p.angle);
+      rounded(-p.size/2,-1.3,p.size,2.6,1,p.color);line(-p.size/3,-.5,p.size/3,-.5,"#fff6d2",.8);ctx.restore();});
     flashes.forEach(p=>{ctx.save();ctx.globalAlpha=Math.min(1,p.life*8);
-      circle(p.x,p.y,11,"#fff1bd");circle(p.x,p.y,17,"#ffac5855");ctx.restore();});
+      ctx.translate(p.x,p.y);ctx.rotate(p.angle||0);ctx.shadowBlur=13;ctx.shadowColor=p.color;
+      circle(0,0,p.size*.6,"#fff7cc");circle(0,0,p.size,"#ffb55f66");
+      polygon([[p.size*1.65,0],[0,-p.size*.40],[-p.size*.85,0],[0,p.size*.40]],p.color);
+      polygon([[0,-p.size*.85],[p.size*.3,0],[0,p.size*.85],[-p.size*.3,0]],"#fff9da");ctx.restore();});
     effects.forEach(p=>{
       ctx.globalAlpha=Math.max(0,p.life/p.max);
       circle(p.x,p.y,p.size,p.color);
