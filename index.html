@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0c161c">
-  <title>IRONLINE — 渓谷防衛戦</title>
-  <link rel="stylesheet" href="./style.css?v=2.9.0">
+  <title>IRONLINE — 4つの戦場</title>
+  <link rel="stylesheet" href="./style.css?v=3.0.0">
 </head>
 <body>
 <div id="ironline" class="game-shell">
@@ -13,7 +13,8 @@
     <div class="brand">
       <span class="brand-mark">◆</span>
       <span>IRONLINE</span>
-      <span class="version">ALPHA 2.9.0</span>
+      <span class="version">ALPHA 3.0.0</span>
+      <span class="stage-caption" id="stage-caption">⛰ 渓谷防衛線</span>
     </div>
 
     <div class="mission-name">
@@ -40,7 +41,7 @@
       <div class="status-item wave">
         <div>
           <small>敵の襲撃</small>
-          <strong id="wave-count">00 / 20</strong>
+          <strong id="wave-count">00 / 05</strong>
         </div>
       </div>
     </div>
@@ -162,29 +163,34 @@
       <div id="result-stats"></div>
       <div id="result-salvage" class="result-salvage"></div>
       <button id="result-lab-button" class="lab-launch" type="button">◆ 研究所で次の作戦を準備</button>
-      <button id="retry-button" class="start-button" type="button">
-        再挑戦
-      </button>
+      <button id="retry-button" class="start-button" type="button">▶ 次のステージへ</button>
     </div>
   </div>
   <div id="lab-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="lab-title">
     <div class="modal-content lab-content">
-      <div class="lab-head"><div><div class="modal-eyebrow">COMMAND CENTER / 永続研究</div><h2 id="lab-title">司令部・作戦ドクトリン</h2></div><button id="lab-close" type="button" aria-label="閉じる">×</button></div>
-      <div class="lab-bank">研究データ <strong id="lab-points">0</strong> <small id="lab-best">最高到達 —</small></div>
-      <p>出撃前にドクトリンを選択。強みには必ず代償がある。研究は控えめな永続強化。</p>
-      <div id="lab-doctrines" class="lab-doctrines"></div>
-      <details class="story-codex"><summary>兵器の組み合わせを見る</summary><div class="codex-body">機関銃＋榴弾砲：焼夷弾幕 / 機関銃＋ミサイル：追尾連装 / 機関銃＋電子戦：妨害射撃 / 榴弾砲＋ミサイル：破片散弾 / 榴弾砲＋電子戦：EMP榴弾 / ミサイル＋電子戦：標的捕捉</div></details>
-      <details class="story-codex"><summary>配置場所の特徴を見る</summary><div class="codex-body">高台：遠くまで届く / 補給：安く置ける / 防衛：一撃が強い / 連携：近くの兵器と協力しやすい / 前衛：素早く撃てる。場所を押し続けると射程を確認できます。</div></details>
-      <details class="story-codex"><summary>📡 戦場通信記録 / STORY LOG</summary><div id="story-log">記録は出撃後に解放されます。</div></details>
-      <div class="lab-separator">TECH RESEARCH / 研究開発</div>
-      <div id="lab-research" class="lab-research"></div>
+      <div class="lab-head"><h2 id="lab-title">◆ 司令部</h2><button id="lab-close" type="button" aria-label="閉じる">×</button></div>
+      <div class="lab-bank"><span>◆ 研究データ</span><strong id="lab-points">0</strong><small id="lab-best">最高到達 —</small></div>
+      <div class="lab-tabs"><button id="lab-tab-stages" class="active" type="button">🗺 戦場を選ぶ</button><button id="lab-tab-research" type="button">⚙ 研究する</button></div>
+      <section id="lab-stage-view" class="lab-view active">
+        <div class="lab-section-label">戦場　<small>各5波でクリア</small></div>
+        <div id="stage-grid" class="stage-grid"></div>
+        <div class="lab-section-label">出撃スタイル</div>
+        <div id="lab-doctrines" class="lab-doctrines"></div>
+      </section>
+      <section id="lab-research-view" class="lab-view">
+        <div class="lab-section-label">研究　<small>永続強化</small></div>
+        <div id="lab-research" class="lab-research"></div>
+        <details class="story-codex"><summary>⚡ 兵器の組み合わせ</summary><div class="codex-body">銃＋砲＝焼夷 / 銃＋弾＝追尾 / 銃＋電＝妨害 / 砲＋弾＝散弾 / 砲＋電＝EMP / 弾＋電＝捕捉</div></details>
+        <details class="story-codex"><summary>📍 配置場所の特徴</summary><div class="codex-body">高台＝射程 / 補給＝安価 / 防衛＝高火力 / 連携＝複合攻撃 / 前衛＝高速射撃</div></details>
+        <details class="story-codex"><summary>📡 通信記録</summary><div id="story-log">出撃で解放</div></details>
+      </section>
       <div id="lab-notice" aria-live="polite"></div>
     </div>
   </div>
 </div>
 
 
-<script src="./script.js?v=2.9.0" defer></script>
+<script src="./script.js?v=3.0.0" defer></script>
 </body>
 </html>
 
