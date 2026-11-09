@@ -22,12 +22,12 @@
     boss:{hp:1200,speed:30,armor:.35,reward:200,damage:4,color:"#a85c4f"}
   };
 
-  const PATH = [
+  let PATH = [
     [-35,110],[75,110],[75,210],[165,210],
     [165,330],[300,330],[300,160],[425,160]
   ];
 
-  const PADS = [
+  let PADS = [
     [28,65],[128,75],[129,153],[30,270],
     [220,163],[215,260],[245,385],[342,255],
     [92,290],[185,390],[320,73],[352,315]
@@ -36,6 +36,15 @@
     "front","high","link","supply","standard","standard",
     "guard","link","supply","guard","high","guard"
   ];
+  const STAGES=[
+    {name:"渓谷防衛線",icon:"⛰",theme:"canyon",start:0,brief:"避難列車を守れ",path:[[-35,110],[75,110],[75,210],[165,210],[165,330],[300,330],[300,160],[425,160]],pads:[[28,65],[128,75],[129,153],[30,270],[220,163],[215,260],[245,385],[342,255],[92,290],[185,390],[320,73],[352,315]]},
+    {name:"砂漠の関門",icon:"☀",theme:"desert",start:5,brief:"高速部隊を迎撃",path:[[-35,365],[100,365],[100,150],[240,150],[240,295],[425,295]],pads:[[35,325],[67,250],[125,300],[159,190],[198,100],[292,200],[302,340],[350,240],[65,80],[195,390],[342,110],[340,420]]},
+    {name:"雪嶺の前哨地",icon:"❄",theme:"snow",start:10,brief:"空からの奇襲に備えよ",path:[[-35,165],[110,165],[110,335],[265,335],[265,115],[425,115]],pads:[[45,85],[160,105],[70,260],[175,250],[220,165],[320,210],[200,415],[323,365],[44,390],[180,55],[340,62],[350,470]]},
+    {name:"鉄鋼要塞",icon:"⚙",theme:"factory",start:15,brief:"最後の防衛作戦",path:[[-35,110],[105,110],[105,250],[300,250],[300,385],[165,385],[165,465],[425,465]],pads:[[38,58],[170,80],[50,185],[180,195],[345,180],[348,310],[255,340],[110,340],[50,400],[230,430],[348,416],[350,65]]}
+  ];
+  let stageIndex=0;
+  const stageEnd=()=>STAGES[stageIndex].start+5;
+  const localWave=n=>n-STAGES[stageIndex].start;
   const PAD_INFO={
     front:{name:"前衛",color:"#edc480",desc:"素早く撃てる"},
     high:{name:"高台",color:"#9adcf7",desc:"遠くまで届く"},
@@ -112,7 +121,7 @@
       {label:"🔥 全火力を集中",hint:"全兵器の火力＋10% / 避難評価−1",cost:0,effect:s=>{s.globalPower*=1.1;towers.forEach(t=>t.power*=1.1);s.convoySafety--},log:"退路を犠牲に火力を集中した"}
     ]}
   };
-  const pendingDecision=()=>!state.active&&!state.finished?DECISIONS[state.wave+1]&&!state.decisions[state.wave+1]?state.wave+1:0:0;
+  const pendingDecision=()=>0; // Short stages must never block progress with a text choice.
   function chooseDecision(n,index){
     if(pendingDecision()!==n)return;
     const choice=DECISIONS[n].options[index];
@@ -125,22 +134,22 @@
   // Local-only progression: no account, analytics SDK, or personal data collection.
   const SAVE_KEY="ironline_commander_v1";
   const DOCTRINES=[
-    {id:"standard",name:"均衡防衛",tag:"標準",desc:"追加条件なし。兵器の相性を覚える基本作戦。"},
-    {id:"assault",name:"先制強襲",tag:"高リスク",desc:"初期資金 +90G / 基地HP -4。先に火力を整える。"},
-    {id:"precision",name:"精密迎撃",tag:"射程重視",desc:"全兵器射程 +12% / 初期資金 -65G。射線を組み直す。"},
-    {id:"salvage",name:"戦場回収",tag:"経済重視",desc:"撃破報酬 +20% / 敵移動速度 +12%。序盤を凌いで成長。"}
+    {id:"standard",name:"均衡防衛",icon:"🛡",tag:"標準",desc:"♥20 · 350G"},
+    {id:"assault",name:"先制強襲",icon:"⚔",tag:"速攻",desc:"+90G · ♥−4"},
+    {id:"precision",name:"精密迎撃",icon:"🎯",tag:"射程",desc:"射程+12% · −65G"},
+    {id:"salvage",name:"戦場回収",icon:"💰",tag:"報酬",desc:"報酬+20% · 敵速+12%"}
   ];
   const RESEARCH=[
-    {id:"power",name:"弾道解析",desc:"全兵器の攻撃力 +4%",cost:35},
-    {id:"supply",name:"戦利品回収",desc:"撃破報酬 +5%",cost:55},
-    {id:"reroll",name:"作戦情報局",desc:"改造候補の引き直し +1",cost:80}
+    {id:"power",name:"火力",icon:"💥",desc:"攻撃+4%",cost:35},
+    {id:"supply",name:"補給",icon:"💰",desc:"報酬+5%",cost:55},
+    {id:"reroll",name:"索敵",icon:"🎯",desc:"引き直し+1",cost:80}
   ];
   function loadCommander(){
     try{
       const raw=JSON.parse(localStorage.getItem(SAVE_KEY)||"{}");
       const levels={};RESEARCH.forEach(r=>levels[r.id]=raw.levels&&raw.levels[r.id]===1?1:0);
-      return {points:Math.max(0,Math.min(99999,Number(raw.points)||0)),best:Math.max(0,Math.min(20,Number(raw.best)||0)),runs:Math.max(0,Number(raw.runs)||0),levels};
-    }catch(_){return {points:0,best:0,runs:0,levels:{power:0,supply:0,reroll:0}};}
+      return {points:Math.max(0,Math.min(99999,Number(raw.points)||0)),best:Math.max(0,Math.min(20,Number(raw.best)||0)),runs:Math.max(0,Number(raw.runs)||0),stages:Math.max(1,Math.min(4,Number(raw.stages)||Math.ceil((Number(raw.best)||0)/5)||1)),levels};
+    }catch(_){return {points:0,best:0,runs:0,stages:1,levels:{power:0,supply:0,reroll:0}};}
   }
   const commander=loadCommander();
   let doctrine="standard",labOpenedFromResult=false;
@@ -157,8 +166,8 @@
   }
   function guide(){
     const n=$("guide-text");if(!n)return;
-    n.textContent=state.wave===0&&!towers.length?"① 光るマスをタップして機関銃を配置しよう！":
-      state.wave===0?"② 配置できた！ 第1波を開始してみよう":
+    n.textContent=localWave(state.wave)===0&&!towers.length?"① 光る＋に銃を置こう":
+      localWave(state.wave)===0?"② ▶ でスタート":
       state.wave===1&&state.active?"③ 銃身が回転して敵を撃破！":
       state.wave===1?"④ 榴弾砲が解放！範囲攻撃を試してみよう":"兵器を強化して次の敵部隊に備えよう！";
   }
@@ -179,8 +188,10 @@
   ];
 
   function reset() {
+    PATH=STAGES[stageIndex].path;
+    PADS=STAGES[stageIndex].pads;
     state = {
-      hp:20, maxHp:20, money:350, wave:0, active:false,
+      hp:20, maxHp:20, money:350+stageIndex*330, wave:STAGES[stageIndex].start, active:false,
       waveLeaks:{},lastWaveReport:"",suggestedTower:"machinegun",
       enemySeed:Math.floor(Math.random()*4294967296),
       paused:false, speed:1, finished:false,
@@ -211,6 +222,15 @@
     $("strike-hint").classList.add("hidden");
     $("evolution-modal").classList.add("hidden");
     $("result-modal").classList.add("hidden");
+    updateUI();
+  }
+  function selectStage(index){
+    if(index<0||index>=commander.stages||index>=STAGES.length)return;
+    stageIndex=index;
+    reset();
+    $("lab-modal").classList.add("hidden");
+    $("result-modal").classList.add("hidden");
+    notice(STAGES[index].icon+" "+STAGES[index].name+" — "+STAGES[index].brief);
     updateUI();
   }
 
@@ -325,13 +345,14 @@
   }
 
   function waveProfile(n) {
-    const unitCount=9+Math.floor(n*2.1);
-    const tank=n===3 || (n>=7 && (n%3===0 || n%5===0 || n>=12));
-    const drone=n>=4 && (n%4===0 || n>=10);
-    const rush=n%4===2;
-    const swarm=n%4===1;
-    return {unitCount,tank,drone,rush,swarm,boss:n%5===0,
-      label:n%5===0?"⚠ 指揮官＋重装甲護衛":
+    const local=(n-1)%5+1;
+    const unitCount=9+Math.floor(local*2.1)+stageIndex;
+    const tank=local===3 || (stageIndex>=1&&local>=2);
+    const drone=(local>=4)||(stageIndex>=2&&local>=2);
+    const rush=local%4===2;
+    const swarm=local%4===1;
+    return {unitCount,tank,drone,rush,swarm,boss:local===5,
+      label:local===5?"⚠ ボス部隊":
         (rush?"高速突破部隊":swarm?"歩兵の大群":tank?"重装甲突撃":drone?"ドローン奇襲":"混成戦闘部隊")};
   }
   const COUNTER_TIPS={
@@ -430,7 +451,7 @@
     state.spawnedThisWave=0;
     state.spawnTimer=.16;state.paused=false;
     const dispatch=storyAt(n);
-    notice(dispatch?"📡 "+dispatch.speaker+"："+dispatch.line:"第"+n+"波 — "+waveProfile(n).label);
+    notice(dispatch?"📡 "+dispatch.line.slice(0,19):"敵接近："+waveProfile(n).label);
     missionBanner=2.25;screenFlash=.17;
     $("wave-alert").textContent="第"+n+"波："+waveProfile(n).label;
     $("wave-alert").classList.remove("hidden");
@@ -439,7 +460,7 @@
     if(state.active||state.finished||state.choosing)return;
     if(!towers.length){notice("先に光るマスをタップして機関銃を配置しよう！");return;}
     if(pendingDecision()){notice("下の二択から作戦を決めてください");return;}
-    if(state.wave===0){launchWave(1);updateUI();return;}
+    if(localWave(state.wave)===0){launchWave(state.wave+1);updateUI();return;}
     // Keep the flow uninterrupted: tactical briefings previously blocked every other wave.
     launchWave(state.wave+1);
     updateUI();
@@ -464,10 +485,10 @@
 
   function spawnEnemy(kind) {
     const d = KIND[kind];
-    const w=state.wave-1;
+    const w=localWave(state.wave)-1;
     // Enemy growth leaves time to learn counters; elite spikes begin after the first boss.
     const late=Math.max(0,w-5);
-    const scale=1+w*.125+w*w*.009+late*late*.055;
+    const scale=(1+w*.125+w*w*.009+late*late*.055)*(1+stageIndex*.30);
     // An independent enemy RNG keeps difficulty stable regardless of particles and sound.
     state.enemySeed=(Math.imul(state.enemySeed,1664525)+1013904223)>>>0;
     const elite=kind!=="boss" && state.wave>=6 && state.enemySeed/4294967296<Math.min(.32,.055+(state.wave-5)*.017);
@@ -934,26 +955,22 @@
     state.paused=true;
     const gained=Math.floor(state.wave*3+Math.min(30,state.kills/6)+(win?80:0)+(win&&state.convoySafety>=2?20:0));
     commander.points+=gained;commander.best=Math.max(commander.best,state.wave);commander.runs++;
+    if(win)commander.stages=Math.max(commander.stages,Math.min(STAGES.length,stageIndex+2));
     saveCommander();
 
     $("result-modal").classList.remove("hidden");
     $("result-icon").textContent=win?"★":"✕";
-    $("result-title").textContent=win?
-      "防衛成功！":"防衛失敗";
+    $("result-title").textContent=win?"作戦成功！":"防衛失敗";
     const failureHint=win?"":waveLeakReport();
     $("result-description").textContent=win?
-      (state.convoySafety>=2?"避難列車は無事に脱出！":"防衛線は守ったが、列車には犠牲が出た。")+
-      (state.intelScore?" 友軍信号の真相へ一歩近づいた。":" 旧施設の真相は封印された。"):
-      "防衛線は崩壊した。"+(failureHint?" "+failureHint+"。":"")+"次は兵器の配置を見直そう。";
+      (stageIndex<3?"🔓 次の戦場が解放！":"🏆 全戦場の防衛に成功！"):
+      (failureHint||"配置を変えて再挑戦！");
 
     const stars=state.hp===state.maxHp?3:state.hp>=11?2:1;
     $("result-stats").textContent=
-      "到達 第"+state.wave+"波"+
-      " / 20 ｜ 撃破 "+state.kills+" ｜ エリート撃破 "+state.eliteKills+
-      " ｜ 獲得戦術 "+state.usedTactics.length+
-      " ｜ 避難評価："+Math.max(0,state.convoySafety)+
-      " ｜ 防衛評価："+(win?"★".repeat(stars):"—");
-    $("result-salvage").textContent="研究データ +"+gained+" ◆ / 累計 "+commander.points+" ◆";
+      STAGES[stageIndex].icon+" "+STAGES[stageIndex].name+"　"+(win?"★".repeat(stars):"挑戦中");
+    $("result-salvage").textContent="◆ +"+gained+"　 合計 "+commander.points;
+    $("retry-button").textContent=win&&stageIndex<3?"▶ 次のステージへ":win?"▶ ステージ選択":"↻ もう一度";
     updateUI();
   }
 
@@ -1028,7 +1045,7 @@
       if(newly){notice("🎉 "+DEF[newly].name+" 解放！");sfx("unlock");
         const card=document.querySelector('[data-tower="'+newly+'"]');if(card)card.classList.add("unlocked");
       }else notice("第"+state.wave+"波 突破！");
-      if(state.wave>=20){
+      if(state.wave>=stageEnd()){
         finish(true);return;
       }
     }
@@ -1099,8 +1116,11 @@
     }
   }
   function drawTerrain() {
+    const theme=STAGES[stageIndex].theme;
+    const palettes={canyon:["#344d43","#405d4d","#1c3c37"],desert:["#66543f","#8b7650","#4b5140"],snow:["#455f68","#8bafaf","#253f52"],factory:["#3a424b","#56605c","#222e3b"]};
+    const colors=palettes[theme];
     const ground=ctx.createLinearGradient(0,0,W,H);
-    ground.addColorStop(0,"#344d43");ground.addColorStop(.55,"#405d4d");ground.addColorStop(1,"#1c3c37");
+    ground.addColorStop(0,colors[0]);ground.addColorStop(.55,colors[1]);ground.addColorStop(1,colors[2]);
     ctx.fillStyle=ground;ctx.fillRect(0,0,W,H);
     // Strongly visible tactical map grid.
     ctx.strokeStyle="#b5d8ab0c";ctx.lineWidth=1;
@@ -1111,18 +1131,18 @@
     ctx.beginPath();
     PATH.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));
     ctx.strokeStyle="#112d2b";ctx.lineWidth=66;ctx.stroke();
-    ctx.strokeStyle="#536751";ctx.lineWidth=60;ctx.stroke();
+    ctx.strokeStyle=theme==="snow"?"#7eaaaa":theme==="desert"?"#867958":theme==="factory"?"#52676a":"#536751";ctx.lineWidth=60;ctx.stroke();
     ctx.strokeStyle="#77694f";ctx.lineWidth=51;ctx.stroke();
-    ctx.strokeStyle="#b7a47c";ctx.lineWidth=44;ctx.stroke();
-    ctx.strokeStyle="#c9ba95";ctx.lineWidth=36;ctx.stroke();
+    ctx.strokeStyle=theme==="snow"?"#a9c9cc":theme==="factory"?"#8b9795":"#b7a47c";ctx.lineWidth=44;ctx.stroke();
+    ctx.strokeStyle=theme==="snow"?"#d5e6e2":theme==="factory"?"#a9b4ae":"#c9ba95";ctx.lineWidth=36;ctx.stroke();
     ctx.strokeStyle="#f8e3a164";ctx.lineWidth=1.6;ctx.setLineDash([10,12]);ctx.stroke();ctx.setLineDash([]);
     // Danger line across the entry point.
-    ctx.save();ctx.translate(14,110);ctx.rotate(-Math.PI/2);
+    ctx.save();ctx.translate(14,PATH[0][1]);ctx.rotate(-Math.PI/2);
     ctx.fillStyle="#f46d55";ctx.fillRect(-13,-24,26,5);
     ctx.font="bold 10px Rajdhani,sans-serif";ctx.textAlign="center";ctx.fillStyle="#ffd6ad";
     ctx.fillText("HOSTILE ENTRY",0,-32);ctx.restore();
     ctx.fillStyle="#ff7659";ctx.beginPath();
-    ctx.moveTo(12,110);ctx.lineTo(-2,101);ctx.lineTo(-2,119);ctx.closePath();ctx.fill();
+    ctx.moveTo(12,PATH[0][1]);ctx.lineTo(-2,PATH[0][1]-9);ctx.lineTo(-2,PATH[0][1]+9);ctx.closePath();ctx.fill();
     // Military edge vignette.
     const v=ctx.createRadialGradient(W/2,H/2,145,W/2,H/2,420);
     v.addColorStop(0,"#061a1700");v.addColorStop(1,"#06151575");
@@ -1135,7 +1155,7 @@
     PADS.forEach(([x,y],i)=>{
       const occupied=towerAt(i);if(occupied)return;
       const pulse=.5+Math.sin(performance.now()/400+i)*.18;
-      const suggested=state.wave===0&&towers.length===0&&i===2;
+      const suggested=localWave(state.wave)===0&&towers.length===0&&i===2;
       ctx.save();ctx.translate(x,y);
       circle(2,5,22,"#0b292c8a");
       rounded(-19,-19,38,38,5,"#182e32");
@@ -1382,7 +1402,7 @@
     ctx.globalAlpha=1;
 
     // Base
-    ctx.save();ctx.shadowColor="#78edd366";ctx.shadowBlur=20;
+    ctx.save();ctx.translate(0,PATH.at(-1)[1]-160);ctx.shadowColor="#78edd366";ctx.shadowBlur=20;
     rounded(339,119,48,61,5,"#0d3030");
     ctx.shadowBlur=0;
     rounded(345,125,36,48,4,"#4c8884");
@@ -1400,8 +1420,9 @@
   }
 
   function updateUI() {
+    $("stage-caption").textContent=STAGES[stageIndex].icon+" "+STAGES[stageIndex].name;
     const labButton=$("dock-lab-button");
-    if(labButton)labButton.textContent="◆ 司令部 "+commander.points;
+    if(labButton)labButton.textContent="🗺 ステージ";
     const nextButton=$("quick-next-wave");
     if(nextButton){
       const showNext=state.wave>0&&!state.active&&!state.choosing&&!state.finished;
@@ -1437,7 +1458,7 @@
       "兵器をタップすると次の成長を確認できます。";
     $("sound-button").textContent=soundOn?"♪":"×";
     $("wave-count").textContent=
-      String(state.wave).padStart(2,"0")+" / 20";
+      String(Math.max(0,localWave(state.wave))).padStart(2,"0")+" / 05";
     $("enemy-count").textContent="敵 "+(enemies.length+state.queue.length)+"体 ｜ 撃破 "+state.kills;
     const profile=waveProfile(Math.min(20,state.wave+1));
     const anyEvolution=towers.some(t=>t.type==="machinegun"?(!t.branch||t.mods.length<2):t.mods.length<3);
@@ -1482,10 +1503,10 @@
     $("pause-button").textContent=state.paused?"▶":"Ⅱ";
 
     $("start-wave").disabled=state.active||state.finished||state.choosing;
-    $("start-wave").classList.toggle("next-action",!state.active&&state.wave===0&&towers.length>0);
+    $("start-wave").classList.toggle("next-action",!state.active&&localWave(state.wave)===0&&towers.length>0);
     $("start-wave").textContent=state.active?"迎撃中":
       state.finished?"作戦終了":
-      "▶ 第"+(state.wave+1)+"波 開始";
+      "▶ 第"+(localWave(state.wave)+1)+"波 開始";
     const decisionPanel=$("decision-panel");
     if(decisionPanel){
       const n=pendingDecision();
@@ -1527,8 +1548,8 @@
       const advice=nextWaveAdvice(coming);
       dockStatus.textContent=state.choosing?"兵器進化を選択中":
         hoverPad>=0&&!towerAt(hoverPad)?padTrait(hoverPad).name+"："+padTrait(hoverPad).desc+"（"+padCost(selectedType,hoverPad)+"G）":
-        state.wave===0&&!towers.length?"① 『まずはここ！』の＋をタップして機関銃を置こう":
-        state.wave===0?"② 準備OK！下の『第1波 開始』を押そう":
+        localWave(state.wave)===0&&!towers.length?"① 光る＋に機関銃を置こう":
+        localWave(state.wave)===0?"② 準備OK！ ▶ をタップ":
         state.active?"交戦中！兵器をタップして強化・追加配置できる":
         state.lastWaveReport||"次は第"+coming+"波："+advice;
     }
@@ -1607,7 +1628,7 @@
   dockTitle.textContent="兵器を選択して配置";
   const dockHead=document.createElement("div");dockHead.className="dock-head";
   const labButton=document.createElement("button");labButton.id="dock-lab-button";
-  labButton.type="button";labButton.textContent="◆ 司令部";
+  labButton.type="button";labButton.textContent="🗺 ステージ";
   labButton.addEventListener("click",()=>openLab(false));
   dockHead.append(dockTitle,labButton);dock.appendChild(dockHead);
   const panel=document.querySelector(".control-panel");
@@ -1636,7 +1657,11 @@
     $("start-wave").onclick=startWave;
   $("upgrade-button").onclick=upgradeTower;
   $("sell-button").onclick=sellTower;
-  $("retry-button").onclick=reset;
+  $("retry-button").onclick=()=>{
+    if(state.finished&&state.hp>0&&stageIndex<STAGES.length-1)selectStage(stageIndex+1);
+    else if(state.finished&&state.hp>0)openLab(true);
+    else reset();
+  };
   $("result-lab-button").onclick=()=>openLab(true);
   $("lab-close").onclick=()=>{
     $("lab-modal").classList.add("hidden");
@@ -1644,29 +1669,57 @@
     updateUI();
   };
 
+  let labView="stages";
+  function switchLabView(view){
+    labView=view;
+    $("lab-stage-view").classList.toggle("active",view==="stages");
+    $("lab-research-view").classList.toggle("active",view==="research");
+    $("lab-tab-stages").classList.toggle("active",view==="stages");
+    $("lab-tab-research").classList.toggle("active",view==="research");
+  }
+  $("lab-tab-stages").onclick=()=>switchLabView("stages");
+  $("lab-tab-research").onclick=()=>switchLabView("research");
   function openLab(fromResult){
     if(state.active||state.choosing){notice("司令部は戦闘と戦闘の間に利用できます");return;}
     labOpenedFromResult=fromResult;
+    switchLabView(fromResult?"stages":labView);
     renderLab();
     $("lab-modal").classList.remove("hidden");
   }
   function renderLab(){
-    $("lab-points").textContent=commander.points+" ◆";
-    $("lab-best").textContent="最高到達 第"+commander.best+"波 / 挑戦 "+commander.runs+"回";
-    const locked=state.wave>0&&!state.finished;
+    $("lab-points").textContent=commander.points;
+    $("lab-best").textContent="解放 "+commander.stages+"/4";
+    const locked=localWave(state.wave)>0&&!state.finished;
+    const stageBox=$("stage-grid");stageBox.replaceChildren();
+    STAGES.forEach((s,i)=>{
+      const open=i<commander.stages;
+      const button=document.createElement("button");button.type="button";
+      button.className="stage-card"+(i===stageIndex?" chosen":"")+(open?"":" locked");
+      button.disabled=!open||state.active;
+      const path=s.path.map(p=>[(p[0]+35)/460*100,(p[1]-50)/420*100]);
+      const line=path.map(([x,y],k)=>(k?"L":"M")+x.toFixed(0)+","+y.toFixed(0)).join(" ");
+      const art=document.createElement("span");art.className="stage-map "+s.theme;
+      art.innerHTML='<svg viewBox="0 0 100 100" aria-hidden="true"><path d="'+line+'" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      const name=document.createElement("strong");name.textContent=(open?s.icon:"🔒")+" "+s.name;
+      const tag=document.createElement("small");tag.textContent=open?(i===stageIndex?"▶ 選択中":"5 WAVE"):"未解放";
+      button.append(art,name,tag);
+      button.onclick=()=>selectStage(i);
+      stageBox.append(button);
+    });
     const doctrineBox=$("lab-doctrines");doctrineBox.replaceChildren();
     DOCTRINES.forEach(d=>{
       const button=document.createElement("button");button.type="button";
       button.className="lab-option"+(d.id===doctrine?" chosen":"");
       button.disabled=locked;
+      const icon=document.createElement("span");icon.className="doctrine-icon";icon.textContent=d.icon;
       const head=document.createElement("strong");head.textContent=(d.id===doctrine?"✓ ":"")+d.name;
       const tag=document.createElement("small");tag.textContent=d.tag;
       const desc=document.createElement("span");desc.textContent=d.desc;
-      button.append(head,tag,desc);
+      button.append(icon,head,tag,desc);
       button.onclick=()=>{
         if(locked)return;
         doctrine=d.id;
-        if(state.wave===0){reset();$("lab-modal").classList.remove("hidden");}
+        if(localWave(state.wave)===0){reset();$("lab-modal").classList.remove("hidden");}
         $("lab-notice").textContent="出撃作戦を「"+d.name+"」に変更";
         renderLab();updateUI();
       };
@@ -1678,10 +1731,11 @@
       const button=document.createElement("button");button.type="button";
       button.className="lab-option research-option"+(purchased?" completed":"");
       button.disabled=purchased||commander.points<r.cost;
+      const icon=document.createElement("span");icon.className="research-icon";icon.textContent=r.icon;
       const name=document.createElement("strong");name.textContent=r.name;
       const desc=document.createElement("span");desc.textContent=r.desc;
       const price=document.createElement("small");price.textContent=purchased?"研究済":r.cost+" ◆";
-      button.append(name,desc,price);
+      button.append(icon,name,desc,price);
       button.onclick=()=>{
         if(commander.levels[r.id]||commander.points<r.cost)return;
         commander.points-=r.cost;commander.levels[r.id]=1;saveCommander();
