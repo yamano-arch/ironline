@@ -30,8 +30,36 @@
   const PADS = [
     [28,65],[128,75],[129,153],[30,270],
     [220,163],[215,260],[245,385],[342,255],
-    [95,390],[175,425],[340,80],[350,405]
+    [92,290],[185,390],[347,115],[352,315]
   ];
+  const PAD_TRAITS=[
+    "front","high","link","supply","standard","standard",
+    "guard","link","supply","guard","high","guard"
+  ];
+  const PAD_INFO={
+    front:{name:"前衛",tag:"F",color:"#edc480",desc:"連射速度＋13%"},
+    high:{name:"高台",tag:"H",color:"#9adcf7",desc:"射程＋30% / 連射速度−12%"},
+    link:{name:"連携拠点",tag:"L",color:"#ac9ef5",desc:"複合連携の距離上限＋30"},
+    supply:{name:"補給拠点",tag:"S",color:"#b8eb9c",desc:"建設費−15%"},
+    standard:{name:"要衝",tag:"•",color:"#83e4c6",desc:"複数の道路を捉える好立地"},
+    guard:{name:"防衛拠点",tag:"G",color:"#ffc083",desc:"攻撃力＋20% / 射程−5%"}
+  };
+  const padTrait=i=>PAD_INFO[PAD_TRAITS[i]];
+  const padCost=(type,i)=>Math.ceil(DEF[type].cost*(PAD_TRAITS[i]==="supply"?.85:1));
+  function padCoverage(i,type){
+    const [x,y]=PADS[i],trait=PAD_TRAITS[i];
+    const range=DEF[type].range*state.globalRange*(trait==="high"?1.30:trait==="guard"?.95:1);
+    let total=0,covered=0;
+    for(let s=0;s<PATH.length-1;s++){
+      const a=PATH[s],b=PATH[s+1],len=Math.hypot(b[0]-a[0],b[1]-a[1]);
+      total+=len;
+      for(let k=0;k<32;k++){
+        const f=(k+.5)/32;
+        if(Math.hypot(a[0]+(b[0]-a[0])*f-x,a[1]+(b[1]-a[1])*f-y)<=range)covered+=len/32;
+      }
+    }
+    return Math.round(covered/total*100);
+  }
 
   const MODS = [
     {id:"power",name:"高威力弾",desc:"攻撃力＋30%"},
@@ -45,7 +73,7 @@
   ];
 
   let state, towers, enemies, bullets, effects;
-  let selectedType, selectedPad, lastTime = 0;
+  let selectedType, selectedPad, lastTime = 0,hoverPad=-1,pressedPad=-1;
   let nextEnemyId = 1, kick=0, beams=[];
   let smokes=[],flashes=[],soundOn=true,audio=null;
   let shockwaves=[],screenFlash=0,combo=0,comboClock=0,missionBanner=0,ambientTime=0;
@@ -173,6 +201,7 @@
     towers = []; enemies = []; bullets = []; effects = [];
     selectedType = "machinegun";
     selectedPad = -1;
+    hoverPad=-1;pressedPad=-1;
     loggedStoryWave=-1;
     draftForWave=0;strikeAiming=false;strikeRings=[];combatTexts=[];kick=0;smokes=[];flashes=[];beams=[];shockwaves=[];screenFlash=0;combo=0;comboClock=0;missionBanner=0;ambientTime=0;
     $("draft-modal").classList.add("hidden");
@@ -195,7 +224,7 @@
   };
   function fusionFor(t){
     if(!t||t.type==="radar")return null;
-    const pairs=towers.filter(o=>o!==t&&distance(o,t)<=140&&FUSIONS[[o.type,t.type].sort().join("+")]);
+    const pairs=towers.filter(o=>o!==t&&distance(o,t)<=(PAD_TRAITS[t.pad]==="link"||PAD_TRAITS[o.pad]==="link"?170:140)&&FUSIONS[[o.type,t.type].sort().join("+")]);
     pairs.sort((a,b)=>distance(a,t)-distance(b,t));
     const partner=pairs[0];if(!partner)return null;
     return {partner,info:FUSIONS[[partner.type,t.type].sort().join("+")]};
@@ -210,9 +239,12 @@
   function makeTower(index, type) {
     const d = DEF[type];
     const [x,y] = PADS[index];
+    const trait=PAD_TRAITS[index],cost=padCost(type,index);
     return {
-      pad:index, type, x,y, level:1, spent:d.cost,
-      power:state.globalPower, interval:d.rate*state.fireRate, range:d.range*state.globalRange,
+      pad:index, type, x,y, level:1, spent:cost,
+      power:state.globalPower*(trait==="guard"?1.20:1),
+      interval:d.rate*state.fireRate*(trait==="front"?.87:trait==="high"?1.12:1),
+      range:d.range*state.globalRange*(trait==="high"?1.30:trait==="guard"?.95:1),
       cooldown:0, angle:-Math.PI/2,
       pierce:state.globalPierce, critical:0, blast:0,
       chain:false, slow:false, mods:[],
@@ -228,7 +260,7 @@
     const existing = towerAt(index);
 
     if (!existing) {
-      const price = DEF[selectedType].cost;
+      const price = padCost(selectedType,index);
       if (state.money < price) {
         notice("資金が足りません！");
         updateUI();
@@ -242,7 +274,7 @@
         notice("⚡ 複合連携発動："+newFusion.info.name+"！");
         shockwaves.push({x:placed.x,y:placed.y,r:4,max:67,life:.65,color:newFusion.info.color});
         combatTexts.push({x:placed.x,y:placed.y-34,text:newFusion.info.name,life:1.4,color:newFusion.info.color});
-      }else notice(DEF[selectedType].name + "を設置！");
+      }else notice(DEF[selectedType].name + "を設置！ / "+padTrait(index).name);
       sfx("unlock");
     }
 
@@ -1043,6 +1075,7 @@
   function drawPads() {
     PADS.forEach(([x,y],i)=>{
       const occupied=towerAt(i);if(occupied)return;
+      const trait=padTrait(i);
       const pulse=.5+Math.sin(performance.now()/400+i)*.18;
       ctx.save();ctx.translate(x,y);
       circle(2,5,22,"#0b292c8a");
@@ -1054,8 +1087,23 @@
       ctx.strokeStyle="#7ddfce88";
       line(-21,-21,-11,-21,"#7ddfce",2);line(-21,-21,-21,-11,"#7ddfce",2);
       line(21,21,11,21,"#7ddfce",2);line(21,21,21,11,"#7ddfce",2);
+      ctx.fillStyle=trait.color;ctx.font="900 10px Rajdhani,sans-serif";ctx.textAlign="center";
+      ctx.fillText(trait.tag,16,-17);
       ctx.restore();
     });
+  }
+  function drawPadPreview(){
+    if(hoverPad<0||towerAt(hoverPad)||!unlocked(selectedType))return;
+    const [x,y]=PADS[hoverPad],trait=PAD_TRAITS[hoverPad];
+    const radius=DEF[selectedType].range*state.globalRange*(trait==="high"?1.30:trait==="guard"?.95:1);
+    ctx.save();
+    ctx.fillStyle="#8cebc50d";ctx.beginPath();ctx.arc(x,y,radius,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle="#9af9d9b8";ctx.lineWidth=1.5;ctx.setLineDash([7,6]);
+    ctx.beginPath();ctx.arc(x,y,radius,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle="#102b2bea";ctx.fillRect(Math.max(4,Math.min(W-160,x-79)),Math.max(7,y-56),158,23);
+    ctx.fillStyle="#e0ffeb";ctx.font="bold 10px 'Noto Sans JP',sans-serif";ctx.textAlign="center";
+    ctx.fillText(padTrait(hoverPad).name+" / 射線"+padCoverage(hoverPad,selectedType)+"%",Math.max(83,Math.min(W-83,x)),Math.max(23,y-40));
+    ctx.restore();
   }
   function drawTower(t) {
     const color=t.type==="radar"?"#5ed9e5":t.type==="missile"?"#f3bd75":t.type==="cannon"?"#f2c77a":"#9fe1c1";
@@ -1193,6 +1241,7 @@
     ctx.clearRect(0,0,W,H);
     ctx.save();if(kick>0)ctx.translate((Math.random()-.5)*kick*2,(Math.random()-.5)*kick*2);
     drawTerrain();
+    drawPadPreview();
     drawPads();
 
     const selected=towerAt(selectedPad);
@@ -1417,6 +1466,7 @@
       const chapter=storyAt(state.active?state.wave:coming);
       const radio=chapter?"📡 "+chapter.code+" / ":"";
       dockStatus.textContent=state.choosing?"兵器進化を選択中":
+        hoverPad>=0&&!towerAt(hoverPad)?"照準："+padTrait(hoverPad).name+" / 道路"+padCoverage(hoverPad,selectedType)+"% / "+padTrait(hoverPad).desc+" / "+padCost(selectedType,hoverPad)+"G":
         selectedLink?"⚡ 連携発動："+selectedLink.info.name+" / "+selectedLink.info.desc:
         state.active?radio+"WAVE "+state.wave+" "+waveProfile(state.wave).label+"  •  配置・強化可能":
         radio+"次WAVE "+coming+"： "+advice+(combos?" / 連携 "+combos:" / 近くに異種兵器で連携");
@@ -1429,28 +1479,52 @@
       "配置可能なマスをタップしてください";
   }
 
-  canvas.addEventListener("pointerdown",event=>{
+  const padFromPointer=event=>{
     const rect=canvas.getBoundingClientRect();
     const x=(event.clientX-rect.left)*W/rect.width;
     const y=(event.clientY-rect.top)*H/rect.height;
-
     let index=-1,nearest=25;
     PADS.forEach((p,i)=>{
       const d=Math.hypot(p[0]-x,p[1]-y);
       if(d<nearest){nearest=d;index=i;}
     });
+    return {index,x,y};
+  };
+  canvas.addEventListener("pointermove",event=>{
+    if(event.pointerType==="touch"&&pressedPad<0)return;
+    const {index}=padFromPointer(event);
+    if(hoverPad!==index){hoverPad=index;updateUI();}
+  });
+  canvas.addEventListener("pointerleave",()=>{
+    if(pressedPad<0&&hoverPad!==-1){hoverPad=-1;updateUI();}
+  });
+  canvas.addEventListener("pointerdown",event=>{
+    event.preventDefault();
+    const {index}=padFromPointer(event);
+    pressedPad=index;hoverPad=index;
+    updateUI();
+  });
+  canvas.addEventListener("pointercancel",()=>{pressedPad=-1;hoverPad=-1;updateUI();});
+  canvas.addEventListener("pointerup",event=>{
+    const {index,x,y}=padFromPointer(event);
+    const chosen=pressedPad;
+    pressedPad=-1;
+    hoverPad=event.pointerType==="mouse"?index:-1;
     if(strikeAiming) {
       if(state.strike>=100 && state.active && !state.paused)useAirstrike(x,y);
       else{strikeAiming=false;$("strike-hint").classList.add("hidden");}
+      updateUI();
       return;
     }
-    if(index>=0)selectPad(index);
+    if(chosen>=0&&chosen===index)selectPad(index);
+    else updateUI();
   });
 
   document.querySelectorAll(".tower-card").forEach(button=>{
     button.onclick=()=>{
       selectedType=button.dataset.tower;
       selectedPad=-1;
+      hoverPad=-1;
       updateUI();
     };
   });
