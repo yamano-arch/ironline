@@ -486,3 +486,33 @@ body{position:fixed;inset:0}
 .evolution-choice .choice-copy .choice-role,.recipe-hint{display:none!important}
 @media(max-height:700px){.lab-content{gap:5px;padding:10px}.stage-card{min-height:102px;padding:5px}.stage-map{height:49px}.lab-doctrines .lab-option{min-height:50px}.lab-tabs button{min-height:37px}.lab-section-label{font-size:12px}}
 
+/* ALPHA 3.1 — illustrated five-weapon arsenal, one-line tactical roles. */
+.game-header{background:linear-gradient(145deg,#1a373b,#091821 83%)}
+.mobile-command-dock .tower-grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
+.mobile-command-dock .tower-card{min-height:77px;gap:2px;padding:4px 1px;justify-content:center}
+.mobile-command-dock .tower-symbol{width:35px;height:27px;border-radius:5px;box-shadow:0 3px 0 #0d2025,inset 0 2px 0 #fff5}
+.tower-symbol svg{display:block;width:100%;height:100%;max-height:26px;fill:currentColor}
+.mobile-command-dock .tower-name{font-size:10px;white-space:nowrap;letter-spacing:-.03em}
+.mobile-command-dock .tower-price{font-size:11px;line-height:1}
+.mobile-command-dock .tower-desc{display:block;font-size:9px;line-height:1.1;min-height:10px;color:#cce3d9;margin:0;white-space:nowrap;letter-spacing:-.04em}
+.tower-symbol.machinegun-symbol{background:linear-gradient(155deg,#789b82,#3d5e53);color:#def8dc}
+.tower-symbol.cannon-symbol{background:linear-gradient(155deg,#b59a6f,#75633f);color:#ffe4af}
+.tower-symbol.flak-symbol{background:linear-gradient(155deg,#6cb8c9,#26536c);color:#a7edff}
+.tower-symbol.missile-symbol{background:linear-gradient(155deg,#bb785b,#624b43);color:#ffcb8d}
+.tower-symbol.radar-symbol{background:linear-gradient(155deg,#678fc6,#354975);color:#a6e8ff}
+.mobile-command-dock .tower-card[data-tower=flak].selected{border-color:#9feafa;box-shadow:0 0 14px #67dcff47}
+.mobile-command-dock .tower-card[data-tower=missile].selected{border-color:#ffc48a;box-shadow:0 0 14px #ffac6459}
+.mobile-command-dock .tower-card[data-tower=cannon].selected{border-color:#ffdc99;box-shadow:0 0 14px #f9d78a59}
+.mobile-command-dock .tower-card[data-tower=radar].selected{border-color:#a7adff;box-shadow:0 0 14px #819eff59}
+.mobile-command-dock .tower-card.locked:after{font-size:9px;letter-spacing:-.05em;padding:3px}
+.battle-topbar #battle-message{background:#0d2533dd;border-color:#b7d6b5;color:#edffe9}
+.stage-map.canyon{background:linear-gradient(135deg,#627b62,#244451)}
+.stage-map.desert{background:linear-gradient(135deg,#d5a56d,#796243);color:#ffe5af}
+.stage-map.snow{background:linear-gradient(135deg,#9fd2db,#37627c);color:#f3ffff}
+.stage-map.factory{background:linear-gradient(135deg,#8b9799,#293440);color:#b9dce5}
+.stage-map svg{filter:drop-shadow(0 2px 3px #0007)}
+.stage-card{transition:filter .12s,transform .12s}
+.stage-card:not(:disabled):active{transform:scale(.97);filter:brightness(1.15)}
+@media(max-height:700px){.mobile-command-dock .tower-card{min-height:65px}.mobile-command-dock .tower-symbol{height:23px;width:30px}.mobile-command-dock .tower-desc{font-size:8px;min-height:8px}}
+@media(max-width:365px){.mobile-command-dock .tower-grid{gap:3px}.mobile-command-dock .tower-name{font-size:9px}.mobile-command-dock .tower-price{font-size:10px}.mobile-command-dock .tower-symbol{width:29px;height:24px}.mobile-command-dock .tower-desc{font-size:8px}}
+
