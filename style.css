@@ -436,3 +436,53 @@ body{position:fixed;inset:0}
 .evolution-target{min-width:0;min-height:30px;border-radius:5px;border:1px solid #597c79;background:#1b363c;color:#aacfc8;font-size:10px;font-weight:800;padding:2px;line-height:1.3}
 .evolution-target.selected{background:#a2e5c6;color:#15332d;border-color:#e9ffd7}
 
+/* ALPHA 3.0 — visual-first four-stage command center. No scrolling and no paragraph cards. */
+.brand{gap:5px;white-space:nowrap}
+.stage-caption{margin-left:auto;max-width:41%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:800 11px 'Noto Sans JP',sans-serif;color:#c8ead5;letter-spacing:0}
+.lab-content{overflow:hidden!important;gap:8px;max-height:min(700px,calc(100dvh - 26px));padding:15px}
+.lab-content h2{font-size:20px;margin:0}
+.lab-head{align-items:center}
+.lab-bank{font-size:12px;padding:9px 11px;min-height:43px}
+.lab-bank strong{font-size:21px;color:#f4e5a3}
+.lab-bank small{font-size:11px}
+.lab-tabs{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.lab-tabs button{min-height:43px;border-radius:10px;border:1px solid #4c827e;background:#18343a;color:#a8cfca;font-size:13px;font-weight:800}
+.lab-tabs button.active{background:#a9e8c7;color:#173329;border-color:#e1ffcd}
+.lab-view{display:none;min-height:0;flex-direction:column;gap:8px}
+.lab-view.active{display:flex}
+.lab-section-label{display:flex;justify-content:space-between;align-items:center;color:#e9f8de;font-size:13px;font-weight:900}
+.lab-section-label small{font-size:10px;font-weight:700;color:#aed6c1}
+.stage-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.stage-card{position:relative;min-width:0;min-height:128px;padding:8px 8px 9px;border-radius:12px;border:2px solid #507a73;color:#ecf8ec;background:#173438;display:flex;flex-direction:column;align-items:stretch;gap:4px;overflow:hidden}
+.stage-card.chosen{border-color:#d6e88d;background:#254741;box-shadow:inset 0 0 0 1px #b7e4a344}
+.stage-card.locked{opacity:.48}
+.stage-card strong{white-space:nowrap;text-overflow:ellipsis;overflow:hidden;font-size:13px;text-align:center}
+.stage-card small{font:800 11px Rajdhani,'Noto Sans JP',sans-serif;color:#e8eaa4;text-align:center}
+.stage-map{display:block;width:100%;height:65px;border-radius:7px;background:linear-gradient(150deg,#54765e,#26453e);overflow:hidden;color:#e6cba0}
+.stage-map svg{width:100%;height:100%}
+.stage-map.desert{background:linear-gradient(150deg,#9c8055,#63583c);color:#f4dcb5}
+.stage-map.snow{background:linear-gradient(150deg,#a0c5c7,#476a84);color:#f4ffff}
+.stage-map.factory{background:linear-gradient(150deg,#697475,#303947);color:#e5c9a0}
+.lab-doctrines{gap:6px}
+.lab-doctrines .lab-option{display:grid;grid-template-columns:32px 1fr;grid-template-rows:auto auto;column-gap:5px;align-items:center;min-height:58px;padding:7px;border-radius:10px;gap:0 5px}
+.lab-doctrines .lab-option .doctrine-icon{grid-row:1/3;grid-column:1;font-size:25px;text-align:center;line-height:1.3;color:#eaffec}
+.lab-doctrines .lab-option strong{font-size:12px;grid-column:2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lab-doctrines .lab-option small{display:none}
+.lab-doctrines .lab-option span:not(.doctrine-icon){grid-column:2;white-space:nowrap;font-size:10px;line-height:1.3;color:#c3dcd0}
+.lab-research{gap:7px}
+.lab-research .lab-option{min-height:135px;align-items:center;text-align:center;justify-content:center;gap:5px;border-radius:10px;padding:8px 4px}
+.lab-research .research-icon{font-size:30px}
+.lab-research .lab-option strong{font-size:13px}
+.lab-research .lab-option span:not(.research-icon){white-space:nowrap;font-size:10px}
+.lab-research .lab-option small{font-size:12px;font-weight:800}
+.lab-content .story-codex{padding:8px 9px}
+.lab-content .story-codex summary{font-size:12px;white-space:nowrap}
+.lab-content #lab-notice{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px}
+#battle-message{white-space:nowrap!important;overflow:hidden;text-overflow:ellipsis;max-width:calc(100% - 120px)!important}
+#result-description{font-size:14px!important;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#result-stats{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#evolution-description{display:none!important}
+.evolution-choice .choice-copy span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;line-height:1.4}
+.evolution-choice .choice-copy .choice-role,.recipe-hint{display:none!important}
+@media(max-height:700px){.lab-content{gap:5px;padding:10px}.stage-card{min-height:102px;padding:5px}.stage-map{height:49px}.lab-doctrines .lab-option{min-height:50px}.lab-tabs button{min-height:37px}.lab-section-label{font-size:12px}}
+
