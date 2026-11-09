@@ -70,6 +70,29 @@
   const storyAt=n=>STORY.find(s=>s.wave===n);
   const storyLead=n=>STORY.filter(s=>s.wave<=n).slice(-1)[0];
   let loggedStoryWave=-1;
+  const DECISIONS={
+    5:{title:"避難列車へ弾薬を送るか？",options:[
+      {label:"🚆 列車を守る −90G",hint:"避難評価＋1",cost:90,effect:s=>{s.convoySafety++;s.money-=90},log:"弾薬を避難列車へ回した"},
+      {label:"⚔ 防衛線を優先 ＋80G",hint:"資金＋80 / 避難評価−1",cost:0,effect:s=>{s.convoySafety--;s.money+=80},log:"防衛線の備蓄を優先した"}
+    ]},
+    10:{title:"友軍信号の発信源を調べるか？",options:[
+      {label:"📡 暗号を解析 −120G",hint:"全兵器の装甲貫通＋12%",cost:120,effect:s=>{s.money-=120;s.globalPierce+=.12;towers.forEach(t=>t.pierce+=.12);s.intelScore++},log:"友軍識別信号の暗号を解析した"},
+      {label:"💰 調査を中断 ＋140G",hint:"資金＋140 / 真相は不明",cost:0,effect:s=>{s.money+=140},log:"司令部の命令に従い調査を止めた"}
+    ]},
+    15:{title:"最後の橋を守るか、火力を集めるか？",options:[
+      {label:"🛡 退路を確保 −100G",hint:"基地HP＋5 / 避難評価＋1",cost:100,effect:s=>{s.money-=100;s.hp=Math.min(s.maxHp,s.hp+5);s.convoySafety++},log:"列車の退路を確保した"},
+      {label:"🔥 全火力を集中",hint:"全兵器の火力＋10% / 避難評価−1",cost:0,effect:s=>{s.globalPower*=1.1;towers.forEach(t=>t.power*=1.1);s.convoySafety--},log:"退路を犠牲に火力を集中した"}
+    ]}
+  };
+  const pendingDecision=()=>!state.active&&!state.finished?DECISIONS[state.wave+1]&&!state.decisions[state.wave+1]?state.wave+1:0:0;
+  function chooseDecision(n,index){
+    if(pendingDecision()!==n)return;
+    const choice=DECISIONS[n].options[index];
+    if(state.money<choice.cost){notice("資金不足。もう一方の決断を選んでください");return;}
+    choice.effect(state);state.decisions[n]=choice.log;
+    notice("📡 決断："+choice.log);
+    loggedStoryWave=-1;updateUI();
+  }
 
   // Local-only progression: no account, analytics SDK, or personal data collection.
   const SAVE_KEY="ironline_commander_v1";
@@ -135,6 +158,7 @@
       upgrades:0, rerolls:3, choosing:false,
        globalPower:1,globalRange:1,fireRate:1,rewardRate:1,globalPierce:0,
        strike:50,strikePower:1,usedTactics:[],kills:0,eliteKills:0,
+       convoySafety:1,intelScore:0,decisions:{},
       note:"防衛施設を設置してください",
       noteTime:0
     };
@@ -341,6 +365,7 @@
   function startWave() {
     if(state.active||state.finished||state.choosing)return;
     if(!towers.length){notice("先に光るマスをタップして機関銃を配置しよう！");return;}
+    if(pendingDecision()){notice("下の二択から作戦を決めてください");return;}
     if(state.wave===0){launchWave(1);updateUI();return;}
     // Keep the flow uninterrupted: tactical briefings previously blocked every other wave.
     launchWave(state.wave+1);
@@ -823,7 +848,7 @@
   function finish(win) {
     state.finished=true;state.active=false;
     state.paused=true;
-    const gained=Math.floor(state.wave*3+Math.min(30,state.kills/6)+(win?80:0));
+    const gained=Math.floor(state.wave*3+Math.min(30,state.kills/6)+(win?80:0)+(win&&state.convoySafety>=2?20:0));
     commander.points+=gained;commander.best=Math.max(commander.best,state.wave);commander.runs++;
     saveCommander();
 
@@ -832,7 +857,8 @@
     $("result-title").textContent=win?
       "MISSION COMPLETE":"MISSION FAILED";
     $("result-description").textContent=win?
-      "避難列車は峡谷を突破。旧施設の謎は残った——次章へ続く。":
+      (state.convoySafety>=2?"避難列車は無事に脱出！":"防衛線は守ったが、列車には犠牲が出た。")+
+      (state.intelScore?" 友軍信号の真相へ一歩近づいた。":" 旧施設の真相は封印された。"):
       "防衛線は崩壊した。通信記録を携え、もう一度作戦を立て直そう。";
 
     const stars=state.hp===state.maxHp?3:state.hp>=11?2:1;
@@ -840,6 +866,7 @@
       "到達 WAVE "+state.wave+
       " / 20 ｜ 撃破 "+state.kills+" ｜ エリート撃破 "+state.eliteKills+
       " ｜ 獲得戦術 "+state.usedTactics.length+
+      " ｜ 避難評価："+Math.max(0,state.convoySafety)+
       " ｜ 防衛評価："+(win?"★".repeat(stars):"—");
     $("result-salvage").textContent="研究データ +"+gained+" ◆ / 累計 "+commander.points+" ◆";
     updateUI();
@@ -1323,6 +1350,9 @@
         entry.textContent="WAVE "+String(s.wave).padStart(2,"0")+"｜"+s.speaker+"「"+s.line+"」";
         storyLog.append(entry);
       });
+      Object.keys(state.decisions).forEach(w=>{
+        const entry=document.createElement("p");entry.textContent="決断 WAVE "+w+"｜"+state.decisions[w];storyLog.append(entry);
+      });
       if(!state.wave){const entry=document.createElement("p");entry.textContent="記録は出撃後に解放されます。";storyLog.append(entry);}
     }
     $("build-summary").textContent=state.usedTactics.length?
@@ -1343,6 +1373,21 @@
     $("start-wave").textContent=state.active?"迎撃中":
       state.finished?"作戦終了":
       "▶ WAVE "+(state.wave+1)+" 開始";
+    const decisionPanel=$("decision-panel");
+    if(decisionPanel){
+      const n=pendingDecision();
+      decisionPanel.classList.toggle("hidden",!n);
+      if(n){
+        $("decision-label").textContent="◆ 作戦決断："+DECISIONS[n].title;
+        DECISIONS[n].options.forEach((opt,i)=>{
+          const btn=$("decision-"+i);
+          btn.textContent=opt.label;
+          btn.title=opt.hint;
+          btn.disabled=state.money<opt.cost;
+          btn.onclick=()=>chooseDecision(n,i);
+        });
+      }
+    }
 
     document.querySelectorAll(".tower-card").forEach(el=>{
       el.classList.toggle("selected",
@@ -1446,6 +1491,10 @@
   });
   dockActions.appendChild(repairButton);
   dock.appendChild(dockActions);
+  const decisionPanel=document.createElement("div");decisionPanel.id="decision-panel";
+  decisionPanel.className="decision-panel hidden";
+  decisionPanel.innerHTML='<strong id="decision-label"></strong><div><button id="decision-0" type="button"></button><button id="decision-1" type="button"></button></div>';
+  dock.appendChild(decisionPanel);
   dock.appendChild(panel.querySelector("#start-wave"));
   document.querySelector(".game-shell").appendChild(dock);
   // Keep the map entirely tappable between waves. The dock already has a start button.
