@@ -407,6 +407,14 @@ body{position:fixed;inset:0}
 .decision-panel>div{display:grid;grid-template-columns:1fr 1fr;gap:5px}
 .decision-panel button{min-width:0;min-height:30px;border:1px solid #a9bcb0;border-radius:5px;background:#264c48;color:#ecf8e4;font-size:11px;font-weight:800;padding:3px 1px}
 .decision-panel button:disabled{opacity:.4}
+.decision-panel button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:46px;padding:4px 2px}
+.decision-panel button strong{font-size:11px;line-height:1.2}
+.decision-panel button small{font-size:9px;line-height:1.25;color:#daedb8;font-weight:500}
+.story-codex .codex-body{font-size:11px;line-height:1.6;padding:7px 4px 2px;color:#d1e6dd}
+.wave-alert{display:none!important}
+.battle-topbar #battle-message{max-width:calc(100% - 120px);font-size:11px;line-height:1.35;white-space:normal}
+.mobile-command-dock #start-wave.next-action{animation:nextActionGlow 1.45s ease-in-out infinite}
+@keyframes nextActionGlow{0%,100%{box-shadow:0 2px #698d4e,0 0 0 0 #abf1bd55}50%{box-shadow:0 2px #698d4e,0 0 0 5px #abf1bd12}}
 .lab-option:disabled:not(.chosen):not(.completed){opacity:.55}
 .lab-separator{font:700 11px Rajdhani,sans-serif;letter-spacing:1.5px;color:#b8dfca;border-top:1px solid #44625d;padding-top:7px}
 .lab-research{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
