@@ -37,12 +37,12 @@
     "guard","link","supply","guard","high","guard"
   ];
   const PAD_INFO={
-    front:{name:"前衛",tag:"F",color:"#edc480",desc:"連射速度＋13%"},
-    high:{name:"高台",tag:"H",color:"#9adcf7",desc:"射程＋30% / 連射速度−12%"},
-    link:{name:"連携拠点",tag:"L",color:"#ac9ef5",desc:"複合連携の距離上限＋30"},
-    supply:{name:"補給拠点",tag:"S",color:"#b8eb9c",desc:"建設費−15%"},
-    standard:{name:"要衝",tag:"•",color:"#83e4c6",desc:"複数の道路を捉える好立地"},
-    guard:{name:"防衛拠点",tag:"G",color:"#ffc083",desc:"攻撃力＋20% / 射程−5%"}
+    front:{name:"前衛",color:"#edc480",desc:"素早く撃てる"},
+    high:{name:"高台",color:"#9adcf7",desc:"遠くまで届く"},
+    link:{name:"連携地点",color:"#ac9ef5",desc:"近くの兵器と協力しやすい"},
+    supply:{name:"補給地点",color:"#b8eb9c",desc:"安く設置できる"},
+    standard:{name:"要衝",color:"#83e4c6",desc:"複数の道路を狙える"},
+    guard:{name:"防衛地点",color:"#ffc083",desc:"一撃が強くなる"}
   };
   const padTrait=i=>PAD_INFO[PAD_TRAITS[i]];
   const padCost=(type,i)=>Math.ceil(DEF[type].cost*(PAD_TRAITS[i]==="supply"?.85:1));
@@ -187,7 +187,7 @@
        globalPower:1,globalRange:1,fireRate:1,rewardRate:1,globalPierce:0,
        strike:50,strikePower:1,usedTactics:[],kills:0,eliteKills:0,
        convoySafety:1,intelScore:0,decisions:{},
-      note:"防衛施設を設置してください",
+      note:"まずは兵器を置こう！",
       noteTime:0
     };
     state.money+=doctrine==="assault"?90:doctrine==="precision"?-65:0;
@@ -274,7 +274,7 @@
         notice("⚡ 複合連携発動："+newFusion.info.name+"！");
         shockwaves.push({x:placed.x,y:placed.y,r:4,max:67,life:.65,color:newFusion.info.color});
         combatTexts.push({x:placed.x,y:placed.y-34,text:newFusion.info.name,life:1.4,color:newFusion.info.color});
-      }else notice(DEF[selectedType].name + "を設置！ / "+padTrait(index).name);
+      }else notice(DEF[selectedType].name + "を設置！ / "+padTrait(index).desc);
       sfx("unlock");
     }
 
@@ -1075,20 +1075,24 @@
   function drawPads() {
     PADS.forEach(([x,y],i)=>{
       const occupied=towerAt(i);if(occupied)return;
-      const trait=padTrait(i);
       const pulse=.5+Math.sin(performance.now()/400+i)*.18;
+      const suggested=state.wave===0&&towers.length===0&&i===2;
       ctx.save();ctx.translate(x,y);
       circle(2,5,22,"#0b292c8a");
       rounded(-19,-19,38,38,5,"#182e32");
       rounded(-16,-16,32,32,4,"#264d49");
-      ctx.strokeStyle="rgba(129,234,213,"+pulse+")";ctx.lineWidth=1.7;
+      ctx.strokeStyle=suggested?"#f6ef9d":"rgba(129,234,213,"+pulse+")";ctx.lineWidth=suggested?2.7:1.7;
       ctx.strokeRect(-14,-14,28,28);
       line(-8,0,8,0,"#8af8db",2.6);line(0,-8,0,8,"#8af8db",2.6);
       ctx.strokeStyle="#7ddfce88";
       line(-21,-21,-11,-21,"#7ddfce",2);line(-21,-21,-21,-11,"#7ddfce",2);
       line(21,21,11,21,"#7ddfce",2);line(21,21,21,11,"#7ddfce",2);
-      ctx.fillStyle=trait.color;ctx.font="900 10px Rajdhani,sans-serif";ctx.textAlign="center";
-      ctx.fillText(trait.tag,16,-17);
+      if(suggested){
+        const bob=Math.sin(ambientTime*5)*3;
+        rounded(-45,-52+bob,90,21,6,"#e6efb7");
+        ctx.font="bold 11px 'Noto Sans JP',sans-serif";ctx.textAlign="center";ctx.fillStyle="#1a382e";
+        ctx.fillText("まずはここ！",0,-37+bob);
+      }
       ctx.restore();
     });
   }
@@ -1102,7 +1106,7 @@
     ctx.beginPath();ctx.arc(x,y,radius,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
     ctx.fillStyle="#102b2bea";ctx.fillRect(Math.max(4,Math.min(W-160,x-79)),Math.max(7,y-56),158,23);
     ctx.fillStyle="#e0ffeb";ctx.font="bold 10px 'Noto Sans JP',sans-serif";ctx.textAlign="center";
-    ctx.fillText(padTrait(hoverPad).name+" / 射線"+padCoverage(hoverPad,selectedType)+"%",Math.max(83,Math.min(W-83,x)),Math.max(23,y-40));
+    ctx.fillText(padTrait(hoverPad).name+"："+padTrait(hoverPad).desc,Math.max(83,Math.min(W-83,x)),Math.max(23,y-40));
     ctx.restore();
   }
   function drawTower(t) {
@@ -1375,7 +1379,7 @@
     $("sound-button").textContent=soundOn?"♪":"×";
     $("wave-count").textContent=
       String(state.wave).padStart(2,"0")+" / 20";
-    $("enemy-count").textContent="敵部隊："+(enemies.length+state.queue.length)+" / KILLS "+state.kills;
+    $("enemy-count").textContent="敵 "+(enemies.length+state.queue.length)+"体 ｜ 撃破 "+state.kills;
     const profile=waveProfile(Math.min(20,state.wave+1));
     const anyEvolution=towers.some(t=>t.type==="machinegun"?(!t.branch||t.mods.length<2):t.mods.length<3);
     const progress=anyEvolution?Math.min(100,Math.max(0,state.xp/state.xpNeed*100)):0;
@@ -1412,13 +1416,14 @@
     strike.classList.toggle("ready",state.strike>=100);
     strike.classList.toggle("aiming",strikeAiming);
     $("strike-charge").textContent=Math.floor(state.strike)+"%";
-    $("game-status").textContent=state.finished?"END":
-      state.paused?"PAUSED":state.active?"IN BATTLE":"STANDBY";
+    $("game-status").textContent=state.finished?"作戦終了":
+      state.paused?"一時停止":state.active?"交戦中":"準備中";
 
     $("speed-button").textContent="×"+state.speed;
     $("pause-button").textContent=state.paused?"▶":"Ⅱ";
 
     $("start-wave").disabled=state.active||state.finished||state.choosing;
+    $("start-wave").classList.toggle("next-action",!state.active&&state.wave===0&&towers.length>0);
     $("start-wave").textContent=state.active?"迎撃中":
       state.finished?"作戦終了":
       "▶ WAVE "+(state.wave+1)+" 開始";
@@ -1430,7 +1435,10 @@
         $("decision-label").textContent="◆ 作戦決断："+DECISIONS[n].title;
         DECISIONS[n].options.forEach((opt,i)=>{
           const btn=$("decision-"+i);
-          btn.textContent=opt.label;
+          btn.replaceChildren();
+          const head=document.createElement("strong"),detail=document.createElement("small");
+          head.textContent=opt.label;detail.textContent=opt.hint;
+          btn.append(head,detail);
           btn.title=opt.hint;
           btn.disabled=state.money<opt.cost;
           btn.onclick=()=>chooseDecision(n,i);
@@ -1455,21 +1463,19 @@
     const dockStatus=$("dock-status");
     if(dockStatus){
       const coming=state.wave+1;
-      const advice=coming===1?"歩兵主体 / 機関銃で練習":
-        coming%5===0?"指揮官＋重装甲 / ミサイル＋減速":
-        coming%4===2?"高速車両 / 榴弾砲・減速で迎撃":
-        coming%4===0?"ドローン / ミサイルで対空":
-        coming%3===0?"重装甲 / ミサイル・徹甲弾":
-        "混成部隊 / 複数兵器を組み合わせよう";
-      const combos=towers.filter(t=>fusionFor(t)).length;
+      const advice=coming%5===0?"強敵が来る！ミサイルで備えよう":
+        coming%4===2?"速い敵が来る。榴弾砲を試そう":
+        coming%4===0?"空から敵が来る。ミサイルが有効":
+        coming%3===0?"硬い敵が来る。火力を強化しよう":
+        "次の敵に備えて配置を考えよう";
       const selectedLink=fusionFor(towerAt(selectedPad));
-      const chapter=storyAt(state.active?state.wave:coming);
-      const radio=chapter?"📡 "+chapter.code+" / ":"";
       dockStatus.textContent=state.choosing?"兵器進化を選択中":
-        hoverPad>=0&&!towerAt(hoverPad)?"照準："+padTrait(hoverPad).name+" / 道路"+padCoverage(hoverPad,selectedType)+"% / "+padTrait(hoverPad).desc+" / "+padCost(selectedType,hoverPad)+"G":
-        selectedLink?"⚡ 連携発動："+selectedLink.info.name+" / "+selectedLink.info.desc:
-        state.active?radio+"WAVE "+state.wave+" "+waveProfile(state.wave).label+"  •  配置・強化可能":
-        radio+"次WAVE "+coming+"： "+advice+(combos?" / 連携 "+combos:" / 近くに異種兵器で連携");
+        hoverPad>=0&&!towerAt(hoverPad)?padTrait(hoverPad).name+"："+padTrait(hoverPad).desc+"（"+padCost(selectedType,hoverPad)+"G）":
+        state.wave===0&&!towers.length?"① 『まずはここ！』の＋をタップして機関銃を置こう":
+        state.wave===0?"② 準備OK！下の『WAVE 1 開始』を押そう":
+        selectedLink?"⚡ "+selectedLink.info.name+"！兵器が協力して攻撃中":
+        state.active?"敵を迎撃中！兵器をタップすると強化できる":
+        "次はWAVE "+coming+"："+advice;
     }
     $("tower-info").textContent=t?
       DEF[t.type].name+" Lv."+t.level+
