@@ -13,7 +13,7 @@
     <div class="brand">
       <span class="brand-mark">◆</span>
       <span>IRONLINE</span>
-      <span class="version">ALPHA 2.8.0</span>
+      <span class="version">ALPHA 2.8.1</span>
     </div>
 
     <div class="mission-name">
@@ -58,12 +58,12 @@
       </div>
     </div>
 
-    <div id="wave-alert" class="wave-alert hidden">WAVE 01 // 敵部隊接近</div>
+    <div id="wave-alert" class="wave-alert hidden">第1波：敵部隊接近</div>
     <div id="strike-hint" class="strike-hint hidden">爆撃地点をマップで指定！</div>
     <div id="battle-combo" class="battle-combo hidden">0 COMBO</div>
     <div class="battle-bottombar">
-      <span id="enemy-count">敵部隊：0</span>
-      <span id="game-status">STANDBY</span>
+      <span id="enemy-count">敵 0体 ｜ 撃破 0</span>
+      <span id="game-status">準備中</span>
     </div>
   </main>
 
@@ -103,10 +103,10 @@
       </button>
     </div>
 
-    <div class="evolution-meter"><div class="evolution-meter-top"><span>✦ WEAPON EVOLUTION</span><strong id="evolution-meter-value">0%</strong></div><div class="evolution-meter-track"><div id="evolution-progress"></div></div><small id="evolution-meter-label">敵を倒すと進化ゲージがたまる！</small></div>
+    <div class="evolution-meter"><div class="evolution-meter-top"><span>✦ 兵器の進化</span><strong id="evolution-meter-value">0%</strong></div><div class="evolution-meter-track"><div id="evolution-progress"></div></div><small id="evolution-meter-label">敵を倒すと進化ゲージがたまる！</small></div>
     <div class="tactical-panel">
       <div class="intel-box">
-        <small>ENEMY INTELLIGENCE / 次の敵部隊</small>
+        <small>次に来る敵</small>
         <strong id="enemy-intel">偵察中…</strong>
         <span id="story-preview" class="story-preview">📡 最終防衛線、通信待機中</span>
         <span id="build-summary">選択した戦術で部隊を強化しよう</span>
@@ -131,22 +131,22 @@
     </div>
 
     <button id="start-wave" class="start-button" type="button">
-      ▶ WAVE 1 開始
+      ▶ 第1波 開始
     </button>
   </section>
 
   <div id="draft-modal" class="modal hidden">
     <div class="modal-content draft-content">
-      <div class="modal-eyebrow">TACTICAL BRIEFING / WAVE <span id="draft-wave">01</span></div>
+      <div class="modal-eyebrow">次の戦いに備えよう ／ 第<span id="draft-wave">1</span>波</div>
       <h2>出撃前の戦術選択</h2>
       <p id="draft-intel">敵部隊の情報を確認して、今回の強化を1つ選ぼう。</p>
       <div id="draft-options"></div>
-      <div class="draft-footnote">永続強化は作戦終了まで有効。地雷・EMP・ロケット・賞金作戦はこのWAVE限定。</div>
+      <div class="draft-footnote">「作戦中ずっと」は最後まで有効。「次の戦いだけ」は1回限り。</div>
     </div>
   </div>
   <div id="evolution-modal" class="modal hidden">
     <div class="modal-content">
-      <div class="modal-eyebrow">WEAPON EVOLUTION / 戦局を変える選択</div>
+      <div class="modal-eyebrow">兵器の進化 ／ 戦局を変える選択</div>
       <h2 id="evolution-title">兵器進化</h2>
       <p id="evolution-description">新たな攻撃方法を選択してください</p>
       <div id="evolution-options"></div>
@@ -184,7 +184,7 @@
 </div>
 
 
-<script src="./script.js?v=2.8.0" defer></script>
+<script src="./script.js?v=2.8.1" defer></script>
 </body>
 </html>
 
