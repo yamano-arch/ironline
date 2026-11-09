@@ -16,10 +16,10 @@
 
   const KIND = {
     infantry:{hp:54,speed:53,armor:0,reward:5,damage:1,color:"#be8056"},
-    car:{hp:130,speed:101,armor:.18,reward:12,damage:2,color:"#a79a68"},
-    tank:{hp:365,speed:37,armor:.56,reward:25,damage:3,color:"#536c51"},
-    drone:{hp:135,speed:108,armor:.08,reward:15,damage:1,color:"#8bbdc1"},
-    boss:{hp:1400,speed:30,armor:.40,reward:200,damage:5,color:"#a85c4f"}
+    car:{hp:108,speed:92,armor:.14,reward:12,damage:1,color:"#a79a68"},
+    tank:{hp:315,speed:36,armor:.45,reward:25,damage:2,color:"#536c51"},
+    drone:{hp:115,speed:99,armor:.06,reward:15,damage:1,color:"#8bbdc1"},
+    boss:{hp:1200,speed:30,armor:.35,reward:200,damage:4,color:"#a85c4f"}
   };
 
   const PATH = [
@@ -181,6 +181,8 @@
   function reset() {
     state = {
       hp:20, maxHp:20, money:350, wave:0, active:false,
+      waveLeaks:{},lastWaveReport:"",suggestedTower:"machinegun",
+      enemySeed:Math.floor(Math.random()*4294967296),
       paused:false, speed:1, finished:false,
       queue:[], spawnTimer:0, xp:0, xpNeed:50,
       upgrades:0, rerolls:3, choosing:false,
@@ -297,7 +299,11 @@
     t.spent += cost;
     t.level++;
     t.power *= t.type === "radar" ? 1.08 : 1.16;
-    if (t.type === "radar") t.range *= 1.025;
+    // Upgrades must feel useful against crowds, not merely overkill one target.
+    t.interval*=.96;
+    t.range*=t.type==="radar"?1.035:1.02;
+    if(t.type==="cannon")t.blast+=2;
+    if(t.type==="missile")t.blast+=1;
 
     burst(t.x,t.y,"#c7ee86",35);sfx("unlock");kick=3;
     if(t.type==="machinegun"&&(t.level===3||t.level===5)){
@@ -328,16 +334,49 @@
       label:n%5===0?"⚠ 指揮官＋重装甲護衛":
         (rush?"高速突破部隊":swarm?"歩兵の大群":tank?"重装甲突撃":drone?"ドローン奇襲":"混成戦闘部隊")};
   }
+  const COUNTER_TIPS={
+    infantry:{name:"歩兵",weapon:"cannon",tip:"榴弾砲を増やそう"},
+    car:{name:"車両",weapon:"cannon",tip:"榴弾砲を追加しよう"},
+    tank:{name:"戦車",weapon:"missile",tip:"ミサイルを増やそう"},
+    drone:{name:"ドローン",weapon:"missile",tip:"ミサイルで迎撃しよう"},
+    boss:{name:"ボス",weapon:"missile",tip:"ミサイルを強化しよう"}
+  };
+  function waveLeakReport(){
+    const counts=Object.entries(state.waveLeaks).sort((a,b)=>b[1]-a[1]);
+    if(!counts.length)return "";
+    const [kind,count]=counts[0],tip=COUNTER_TIPS[kind];
+    state.suggestedTower=unlocked(tip.weapon)?tip.weapon:"machinegun";
+    return "⚠ "+tip.name+count+"体突破 → "+tip.tip;
+  }
+  function nextWaveAdvice(n){
+    const p=waveProfile(Math.min(20,n));
+    return p.boss?"強敵！ミサイルを増やそう":
+      p.rush?"速い敵！榴弾砲を曲がり角に":
+      p.tank?"戦車対策にミサイルを配置":
+      p.drone?"ドローン対策にミサイルを配置":
+      p.swarm?"歩兵の大群！榴弾砲で範囲攻撃":
+      "配置と強化で敵に備えよう";
+  }
+  function recommendNextWeapon(n){
+    const p=waveProfile(Math.min(20,n));
+    return p.boss?"missile":p.rush?"cannon":p.tank||p.drone?"missile":p.swarm?"cannon":"machinegun";
+  }
   function waveKinds(n) {
     const profile=waveProfile(n),result=[];
     for(let i=0;i<profile.unitCount;i++){
-      // Enemy composition is deliberately legible: every wave tests a different counter.
+      // Each wave has a readable primary threat; rush waves must not secretly
+      // combine maximum tanks, drones and fast cars at the same time.
       let kind="infantry";
-      if(n>=2&&i%3===0)kind="car";
-      if(profile.rush&&i%4===0)kind="car";
-      if(profile.tank&&i%6===0)kind="tank";
-      if(profile.drone&&i%4===1)kind="drone";
-      if(n%5===0&&i%(n===5?7:6)===0)kind="tank";
+      if(profile.rush&&!profile.boss){
+        if(i%3===0)kind="car";
+        if(profile.drone&&i%8===1)kind="drone";
+        if(profile.tank&&i%12===6)kind="tank";
+      }else{
+        if(n>=2&&i%(n<=3?5:3)===0)kind="car";
+        if(profile.tank&&i%6===0)kind="tank";
+        if(profile.drone&&i%4===1)kind="drone";
+        if(n%5===0&&i%(n===5?7:6)===0)kind="tank";
+      }
       result.push(kind);
     }
     if(profile.boss)result.push("boss");
@@ -386,6 +425,7 @@
     draftForWave=n;
     if(n===1)state.wavePlan=null;
     state.wave=n;state.active=true;
+    state.waveLeaks={};state.lastWaveReport="";
     state.queue=waveKinds(n);
     state.spawnedThisWave=0;
     state.spawnTimer=.16;state.paused=false;
@@ -425,13 +465,17 @@
   function spawnEnemy(kind) {
     const d = KIND[kind];
     const w=state.wave-1;
-    const scale=1+w*.20+w*w*.018;
-    const elite=kind!=="boss" && state.wave>=3 && Math.random()<Math.min(.42,.09+state.wave*.016);
+    // Enemy growth leaves time to learn counters; elite spikes begin after the first boss.
+    const late=Math.max(0,w-5);
+    const scale=1+w*.125+w*w*.009+late*late*.055;
+    // An independent enemy RNG keeps difficulty stable regardless of particles and sound.
+    state.enemySeed=(Math.imul(state.enemySeed,1664525)+1013904223)>>>0;
+    const elite=kind!=="boss" && state.wave>=6 && state.enemySeed/4294967296<Math.min(.32,.055+(state.wave-5)*.017);
     return {
       id:nextEnemyId++, kind,
       x:PATH[0][0], y:PATH[0][1],
-      segment:0, hp:d.hp*scale*(elite?2.2:1), maxHp:d.hp*scale*(elite?2.2:1),
-      speed:d.speed*(1+Math.min(.35,w*.022))*(elite?1.16:1)*(doctrine==="salvage"?1.12:1), armor:d.armor, reward:d.reward*(elite?3:1), elite,
+      segment:0, hp:d.hp*scale*(elite?1.65:1), maxHp:d.hp*scale*(elite?1.65:1),
+      speed:d.speed*(1+Math.min(.25,w*.015))*(elite?1.10:1)*(doctrine==="salvage"?1.12:1), armor:d.armor, reward:d.reward*(elite?3:1), elite,
       damage:d.damage, color:d.color,
       slowTime:0, alive:true, angle:0
     };
@@ -487,8 +531,9 @@
     if (e.segment >= PATH.length-1) {
       e.alive=false;
       state.hp -= e.damage;
+      state.waveLeaks[e.kind]=(state.waveLeaks[e.kind]||0)+1;
       strikeRings.push({x:360,y:140,radius:8,life:.55});
-      combatTexts.push({x:345,y:105,text:"BASE -"+e.damage,life:1.1,color:"#ff8176"});
+      combatTexts.push({x:345,y:105,text:"基地 -"+e.damage,life:1.1,color:"#ff8176"});
       burst(e.x,e.y,"#ff7373",13);
     }
   }
@@ -804,6 +849,12 @@
     if(t.type==="radar")available=available.filter(m=>["range","rapid","slow","blast"].includes(m.id));
     return available.sort(()=>Math.random()-.5).slice(0,3);
   }
+  function padAreaLabel(pad){
+    const [x,y]=PADS[pad];
+    const vertical=y<125?"上":y<245?"中":y<350?"下":"最下";
+    const horizontal=x<105?"左":x<195?"中央左":x<305?"中央右":"右";
+    return vertical+horizontal;
+  }
   function openEvolution() {
     if(state.choosing||state.finished)return;
     const available=towers.filter(t=>t.type==="machinegun"?!t.branch||t.mods.length<2:t.mods.length<3);
@@ -822,7 +873,7 @@
       available.slice(0,6).forEach(candidate=>{
         const chip=document.createElement("button");chip.type="button";
         chip.className="evolution-target"+(candidate===t?" selected":"");
-        chip.textContent=(candidate.type==="machinegun"?"MG":candidate.type==="cannon"?"HE":candidate.type==="missile"?"MS":"EW")+" "+(candidate.pad+1);
+        chip.textContent=DEF[candidate.type].name+"・"+padAreaLabel(candidate.pad);
         chip.onclick=()=>{t=candidate;selectedPad=t.pad;drawChoices();};
         targets.appendChild(chip);
       });
@@ -889,10 +940,11 @@
     $("result-icon").textContent=win?"★":"✕";
     $("result-title").textContent=win?
       "防衛成功！":"防衛失敗";
+    const failureHint=win?"":waveLeakReport();
     $("result-description").textContent=win?
       (state.convoySafety>=2?"避難列車は無事に脱出！":"防衛線は守ったが、列車には犠牲が出た。")+
       (state.intelScore?" 友軍信号の真相へ一歩近づいた。":" 旧施設の真相は封印された。"):
-      "防衛線は崩壊した。通信記録を携え、もう一度作戦を立て直そう。";
+      "防衛線は崩壊した。"+(failureHint?" "+failureHint+"。":"")+"次は兵器の配置を見直そう。";
 
     const stars=state.hp===state.maxHp?3:state.hp>=11?2:1;
     $("result-stats").textContent=
@@ -932,7 +984,7 @@
       if(state.wavePlan==="mines"&&state.spawnedThisWave<=6)foe.operationPending="mines";
       if(state.wavePlan==="barrage"&&state.spawnedThisWave<=6)foe.operationPending="barrage";
       enemies.push(foe);
-      state.spawnTimer=waveProfile(state.wave).rush?.13:waveProfile(state.wave).swarm?.16:.19;
+      state.spawnTimer=waveProfile(state.wave).rush?.24:waveProfile(state.wave).swarm?.26:.28;
     }
 
     enemies.forEach(e=>{
@@ -962,7 +1014,13 @@
     if(!state.queue.length&&!enemies.length){
       state.active=false;
       combo=0;comboClock=0;
-      state.money+=state.wave===2?170:state.wave<3?50:30;
+      state.lastWaveReport=waveLeakReport();
+      if(!state.lastWaveReport&&state.hp<state.maxHp){
+        state.hp=Math.min(state.maxHp,state.hp+1);
+        notice("✓ 敵を全員撃破！基地の体力が１回復");
+      }
+      if(!Object.keys(state.waveLeaks).length)state.suggestedTower=recommendNextWeapon(state.wave+1);
+      state.money+=state.wave===2?170:state.wave<3?50:Math.min(100,45+state.wave*6);
       if(state.hp===state.maxHp)state.money+=state.wave<3?20:10;
       state.xp+=15;
       state.wavePlan=null;state.operationName=null;
@@ -1450,6 +1508,8 @@
     document.querySelectorAll(".tower-card").forEach(el=>{
       el.classList.toggle("selected",
         el.dataset.tower===selectedType);
+      el.classList.toggle("recommended",state.wave>0&&!state.active&&!state.finished&&
+        unlocked(el.dataset.tower)&&el.dataset.tower===state.suggestedTower);
     });
 
     const t=towerAt(selectedPad);
@@ -1460,23 +1520,17 @@
       "↑ 強化 "+(t.level>=10?"MAX":cost+"G"):"↑ 強化";
 
     const repair=$("repair-button");
-    if(repair){repair.disabled=state.money<60||state.hp>=state.maxHp||state.choosing||state.finished;repair.textContent="♥ 修復 60G";}
+    if(repair){repair.disabled=state.money<60||state.hp>=state.maxHp||state.choosing||state.finished;repair.textContent="♥ +4回復 60G";}
     const dockStatus=$("dock-status");
     if(dockStatus){
       const coming=state.wave+1;
-      const advice=coming%5===0?"強敵が来る！ミサイルで備えよう":
-        coming%4===2?"速い敵が来る。榴弾砲を試そう":
-        coming%4===0?"空から敵が来る。ミサイルが有効":
-        coming%3===0?"硬い敵が来る。火力を強化しよう":
-        "次の敵に備えて配置を考えよう";
-      const selectedLink=fusionFor(towerAt(selectedPad));
+      const advice=nextWaveAdvice(coming);
       dockStatus.textContent=state.choosing?"兵器進化を選択中":
         hoverPad>=0&&!towerAt(hoverPad)?padTrait(hoverPad).name+"："+padTrait(hoverPad).desc+"（"+padCost(selectedType,hoverPad)+"G）":
         state.wave===0&&!towers.length?"① 『まずはここ！』の＋をタップして機関銃を置こう":
         state.wave===0?"② 準備OK！下の『第1波 開始』を押そう":
-        selectedLink?"⚡ "+selectedLink.info.name+"！兵器が協力して攻撃中":
-        state.active?"敵を迎撃中！兵器をタップすると強化できる":
-        "次は第"+coming+"波："+advice;
+        state.active?"交戦中！兵器をタップして強化・追加配置できる":
+        state.lastWaveReport||"次は第"+coming+"波："+advice;
     }
     $("tower-info").textContent=t?
       DEF[t.type].name+" Lv."+t.level+
@@ -1562,12 +1616,12 @@
   dockActions.appendChild(panel.querySelector("#airstrike-button"));
   const repairButton=document.createElement("button");
   repairButton.id="repair-button";repairButton.type="button";
-  repairButton.textContent="♥ 修復 60G";
+  repairButton.textContent="♥ +4回復 60G";
   repairButton.addEventListener("click",()=>{
     if(state.finished||state.choosing||state.money<60||state.hp>=state.maxHp)return;
     const healed=Math.min(4,state.maxHp-state.hp);
     state.money-=60;state.hp+=healed;
-    notice("基地を修復！ HP +"+healed);
+    notice("基地を修復！体力＋"+healed+"（残り"+state.money+"G）");
     updateUI();
   });
   dockActions.appendChild(repairButton);
