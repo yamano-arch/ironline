@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0c161c">
   <title>IRONLINE — 渓谷防衛戦</title>
-  <link rel="stylesheet" href="./style.css?v=2.7.0">
+  <link rel="stylesheet" href="./style.css?v=2.8.0">
 </head>
 <body>
 <div id="ironline" class="game-shell">
@@ -13,7 +13,7 @@
     <div class="brand">
       <span class="brand-mark">◆</span>
       <span>IRONLINE</span>
-      <span class="version">ALPHA 2.7.1</span>
+      <span class="version">ALPHA 2.8.0</span>
     </div>
 
     <div class="mission-name">
@@ -24,7 +24,7 @@
       <div class="status-item health">
         <span class="status-icon">♥</span>
         <div>
-          <small>BASE HP</small>
+          <small>基地の体力</small>
           <strong id="base-hp">20 / 20</strong>
         </div>
       </div>
@@ -32,14 +32,14 @@
       <div class="status-item money">
         <span class="status-icon">●</span>
         <div>
-          <small>CREDITS</small>
+          <small>使える資金</small>
           <strong id="credits">500 G</strong>
         </div>
       </div>
 
       <div class="status-item wave">
         <div>
-          <small>ENEMY WAVE</small>
+          <small>敵の襲撃</small>
           <strong id="wave-count">00 / 20</strong>
         </div>
       </div>
@@ -50,11 +50,11 @@
     <canvas id="game-canvas" width="390" height="520"></canvas>
 
     <div class="battle-topbar">
-      <div id="battle-message">防衛施設を設置してください</div>
+      <div id="battle-message">まずは兵器を置こう！</div>
       <div class="battle-controls">
         <button id="sound-button" type="button" aria-label="効果音">♪</button>
-        <button id="pause-button" type="button">Ⅱ</button>
-        <button id="speed-button" type="button">×1</button>
+        <button id="pause-button" type="button" aria-label="一時停止" title="一時停止">Ⅱ</button>
+        <button id="speed-button" type="button" aria-label="速度を変更" title="速度を変更">×1</button>
       </div>
     </div>
 
@@ -79,25 +79,25 @@
     <div class="guide-banner" id="guide-banner"><strong>MISSION 01：はじめての防衛</strong><span id="guide-text">① 光るマスをタップして機関銃を配置しよう！</span></div>
     <div class="tower-grid">
       <button class="tower-card selected" data-tower="machinegun" type="button">
-        <span class="tower-symbol machinegun-symbol">MG</span>
+        <span class="tower-symbol machinegun-symbol">銃</span>
         <span class="tower-name">機関銃</span>
         <span class="tower-price">100 G</span><span class="tower-desc">歩兵に強い・高速連射</span>
       </button>
 
       <button class="tower-card" data-tower="cannon" type="button">
-        <span class="tower-symbol cannon-symbol">HE</span>
+        <span class="tower-symbol cannon-symbol">砲</span>
         <span class="tower-name">榴弾砲</span>
         <span class="tower-price">180 G</span><span class="tower-desc">範囲爆発・集団に強い</span>
       </button>
 
       <button class="tower-card" data-tower="missile" type="button">
-        <span class="tower-symbol missile-symbol">MS</span>
+        <span class="tower-symbol missile-symbol">弾</span>
         <span class="tower-name">ミサイル</span>
         <span class="tower-price">250 G</span><span class="tower-desc">高威力・戦車に強い</span>
       </button>
 
       <button class="tower-card" data-tower="radar" type="button">
-        <span class="tower-symbol radar-symbol">EW</span>
+        <span class="tower-symbol radar-symbol">電</span>
         <span class="tower-name">電子戦</span>
         <span class="tower-price">200 G</span><span class="tower-desc">敵を遅くする支援兵器</span>
       </button>
@@ -173,8 +173,8 @@
       <div class="lab-bank">研究データ <strong id="lab-points">0</strong> <small id="lab-best">最高到達 —</small></div>
       <p>出撃前にドクトリンを選択。強みには必ず代償がある。研究は控えめな永続強化。</p>
       <div id="lab-doctrines" class="lab-doctrines"></div>
-      <div class="fusion-codex"><strong>複合連携 / 140以内に異種兵器を配置</strong><span>MG＋HE 焼夷弾幕　 MG＋MS 追尾連装　 MG＋EW 妨害射撃</span><span>HE＋MS 破片散弾　 HE＋EW EMP榴弾　 MS＋EW 標的捕捉</span></div>
-      <div class="fusion-codex"><strong>配置マスの戦術特性 / マスを押し続けると射程確認</strong><span>H 高台：射程＋30%・連射速度−12% ／ S 補給：建設費−15%</span><span>G 防衛：火力＋20%・射程−5% ／ L 連携：連携距離＋30 ／ F 前衛：連射速度＋13%</span></div>
+      <details class="story-codex"><summary>兵器の組み合わせを見る</summary><div class="codex-body">機関銃＋榴弾砲：焼夷弾幕 / 機関銃＋ミサイル：追尾連装 / 機関銃＋電子戦：妨害射撃 / 榴弾砲＋ミサイル：破片散弾 / 榴弾砲＋電子戦：EMP榴弾 / ミサイル＋電子戦：標的捕捉</div></details>
+      <details class="story-codex"><summary>配置場所の特徴を見る</summary><div class="codex-body">高台：遠くまで届く / 補給：安く置ける / 防衛：一撃が強い / 連携：近くの兵器と協力しやすい / 前衛：素早く撃てる。場所を押し続けると射程を確認できます。</div></details>
       <details class="story-codex"><summary>📡 戦場通信記録 / STORY LOG</summary><div id="story-log">記録は出撃後に解放されます。</div></details>
       <div class="lab-separator">TECH RESEARCH / 研究開発</div>
       <div id="lab-research" class="lab-research"></div>
@@ -184,7 +184,7 @@
 </div>
 
 
-<script src="./script.js?v=2.7.1" defer></script>
+<script src="./script.js?v=2.8.0" defer></script>
 </body>
 </html>
 
