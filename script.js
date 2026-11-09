@@ -6,6 +6,22 @@
   const canvas = $("game-canvas");
   const ctx = canvas.getContext("2d");
   const W = 390, H = 520;
+  // Production-painted turret portraits double as battlefield sprites.
+  // Canvas fallback remains for evolved branches with unique silhouettes.
+  const turretArt = Object.fromEntries(["machinegun","cannon","flak","missile","radar"].map(type=>{
+    const img=typeof Image!=="undefined"?new Image():null;
+    if(img)img.src=`./assets/${type}.webp?v=3.3.0`;
+    return [type,img];
+  }));
+  document.querySelectorAll?.('.tower-card[data-tower]').forEach(card=>{
+    const img=turretArt[card.dataset.tower];
+    const holder=card.querySelector('.tower-symbol');
+    if(img&&holder){
+      const portrait=img.cloneNode();
+      portrait.alt='';portrait.className='tower-portrait';
+      holder.replaceChildren(portrait);
+    }
+  });
 
   const DEF = {
     machinegun: { name:"機関銃", cost:100, dmg:16, rate:.23, range:137, color:"#d5ec8d" },
@@ -1489,6 +1505,22 @@
   function drawTower(t) {
     const color=t.type==="radar"?"#5ed9e5":t.type==="flak"?"#88e7ff":t.type==="missile"?"#f3bd75":t.type==="cannon"?"#f2c77a":"#9fe1c1";
     ctx.save();ctx.translate(t.x,t.y);
+    const sprite=turretArt[t.type];
+    const painted=!!(sprite?.complete&&sprite.naturalWidth&&(!t.branch||(t.type==="machinegun"&&t.branch==="gatling")));
+    if(painted){
+      ctx.save();
+      ctx.shadowColor="#06131bd9";ctx.shadowBlur=11;ctx.shadowOffsetY=5;
+      ctx.rotate(t.angle+Math.PI/2);
+      ctx.translate(0,t.recoil*4);
+      const size=t.awakened?69:t.branch?65:59;
+      ctx.drawImage(sprite,-size/2,-size/2,size,size);
+      ctx.shadowBlur=0;ctx.shadowOffsetY=0;
+      if(t.glow>0){
+        circle(0,-size*.38,7+t.glow*24,"#ffdc80");
+        circle(0,-size*.38,3,"#fff6bc");
+      }
+      ctx.restore();
+    }else{
     // Chassis does not rotate. Turrets swivel independently and genuinely recoil.
     ctx.save();ctx.scale(1,1.02);
     ctx.shadowColor="#06131bd9";ctx.shadowBlur=13;ctx.shadowOffsetY=9;
@@ -1668,6 +1700,7 @@
       }
     }
     ctx.restore();
+    }
     // Tactical class LEDs, deliberately color-coded but never reliant on color alone.
     for(const side of [-1,1]){
       ctx.fillStyle=color;ctx.shadowColor=color;ctx.shadowBlur=5;
