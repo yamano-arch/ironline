@@ -8,10 +8,11 @@
   const W = 390, H = 520;
 
   const DEF = {
-    machinegun: { name:"機関銃", cost:100, dmg:19, rate:.20, range:145, color:"#d5ec8d" },
-    cannon:     { name:"榴弾砲", cost:180, dmg:65, rate:2.5, range:140, color:"#ffd28c" },
-    missile:    { name:"ミサイル", cost:250, dmg:155, rate:2.2, range:195, color:"#f5ab79" },
-    radar:      { name:"電子戦", cost:200, dmg:0, rate:.5, range:115, color:"#86e2f8" }
+    machinegun: { name:"機関銃", cost:100, dmg:16, rate:.23, range:137, color:"#d5ec8d" },
+    cannon:     { name:"榴弾砲", cost:170, dmg:83, rate:2.05, range:144, color:"#ffd28c" },
+    flak:       { name:"対空砲", cost:195, dmg:49, rate:.65, range:188, color:"#8de8ff" },
+    missile:    { name:"ミサイル", cost:250, dmg:170, rate:2.1, range:205, color:"#f5ab79" },
+    radar:      { name:"電子戦", cost:175, dmg:0, rate:.5, range:128, color:"#86e2f8" }
   };
 
   const KIND = {
@@ -19,7 +20,7 @@
     car:{hp:108,speed:92,armor:.14,reward:12,damage:1,color:"#a79a68"},
     tank:{hp:315,speed:36,armor:.45,reward:25,damage:2,color:"#536c51"},
     drone:{hp:115,speed:99,armor:.06,reward:15,damage:1,color:"#8bbdc1"},
-    boss:{hp:1200,speed:30,armor:.35,reward:200,damage:4,color:"#a85c4f"}
+    boss:{hp:900,speed:30,armor:.35,reward:200,damage:4,color:"#a85c4f"}
   };
 
   let PATH = [
@@ -36,14 +37,15 @@
     "front","high","link","supply","standard","standard",
     "guard","link","supply","guard","high","guard"
   ];
+  const WAVES_PER_STAGE=10;
   const STAGES=[
-    {name:"渓谷防衛線",icon:"⛰",theme:"canyon",start:0,brief:"避難列車を守れ",path:[[-35,110],[75,110],[75,210],[165,210],[165,330],[300,330],[300,160],[425,160]],pads:[[28,65],[128,75],[129,153],[30,270],[220,163],[215,260],[245,385],[342,255],[92,290],[185,390],[320,73],[352,315]]},
-    {name:"砂漠の関門",icon:"☀",theme:"desert",start:5,brief:"高速部隊を迎撃",path:[[-35,365],[100,365],[100,150],[240,150],[240,295],[425,295]],pads:[[35,325],[67,250],[125,300],[159,190],[198,100],[292,200],[302,340],[350,240],[65,80],[195,390],[342,110],[340,420]]},
-    {name:"雪嶺の前哨地",icon:"❄",theme:"snow",start:10,brief:"空からの奇襲に備えよ",path:[[-35,165],[110,165],[110,335],[265,335],[265,115],[425,115]],pads:[[45,85],[160,105],[70,260],[175,250],[220,165],[320,210],[200,415],[323,365],[44,390],[180,55],[340,62],[350,470]]},
-    {name:"鉄鋼要塞",icon:"⚙",theme:"factory",start:15,brief:"最後の防衛作戦",path:[[-35,110],[105,110],[105,250],[300,250],[300,385],[165,385],[165,465],[425,465]],pads:[[38,58],[170,80],[50,185],[180,195],[345,180],[348,310],[255,340],[110,340],[50,400],[230,430],[348,416],[350,65]]}
+    {name:"渓谷防衛線",icon:"⛰",theme:"canyon",start:0,brief:"曲がり角で敵を迎え撃て",path:[[-35,110],[75,110],[75,210],[165,210],[165,330],[300,330],[300,160],[425,160]],pads:[[28,65],[128,75],[129,153],[30,270],[220,163],[215,260],[245,385],[342,255],[92,290],[185,390],[320,73],[352,315]]},
+    {name:"砂漠の関門",icon:"☀",theme:"desert",start:10,brief:"高速車両を止めろ",path:[[-35,365],[100,365],[100,150],[240,150],[240,295],[425,295]],pads:[[35,325],[67,250],[125,300],[159,190],[198,100],[292,200],[302,340],[350,240],[65,80],[195,390],[342,110],[340,420]]},
+    {name:"雪嶺の前哨地",icon:"❄",theme:"snow",start:20,brief:"飛来するドローンを撃て",path:[[-35,165],[110,165],[110,335],[265,335],[265,115],[425,115]],pads:[[45,85],[160,105],[70,260],[175,250],[220,165],[320,210],[200,415],[323,365],[44,390],[180,55],[340,62],[350,470]]},
+    {name:"鉄鋼要塞",icon:"⚙",theme:"factory",start:30,brief:"重装甲部隊を撃破せよ",path:[[-35,110],[105,110],[105,250],[300,250],[300,385],[165,385],[165,465],[425,465]],pads:[[38,58],[170,80],[50,185],[180,195],[345,180],[348,310],[255,340],[110,340],[50,400],[230,430],[348,416],[350,65]]}
   ];
   let stageIndex=0;
-  const stageEnd=()=>STAGES[stageIndex].start+5;
+  const stageEnd=()=>STAGES[stageIndex].start+WAVES_PER_STAGE;
   const localWave=n=>n-STAGES[stageIndex].start;
   const PAD_INFO={
     front:{name:"前衛",color:"#edc480",desc:"素早く撃てる"},
@@ -86,23 +88,24 @@
   let nextEnemyId = 1, kick=0, beams=[];
   let smokes=[],flashes=[],soundOn=true,audio=null;
   let shockwaves=[],screenFlash=0,combo=0,comboClock=0,missionBanner=0,ambientTime=0;
-  const unlockAt={machinegun:0,cannon:1,missile:2,radar:3};
-  const unlocked=type=>state.wave>=unlockAt[type];
+  const unlockAt={machinegun:0,cannon:1,flak:2,missile:3,radar:4};
+  // Learned weapons remain available on later fronts; equipment knowledge is progress.
+  const unlocked=type=>stageIndex>0||localWave(state.wave)>=unlockAt[type];
   // Story advances with combat, never opens a blocking dialogue or pauses the game.
   const STORY=[
-    {wave:1,code:"01 / 最終防衛線",speaker:"管制官ミナ",line:"避難列車の通過まで持ちこたえて。峡谷を抜かせないで。"},
-    {wave:2,code:"02 / 速すぎる敵影",speaker:"偵察兵レン",line:"敵はこっちの配置を読んでる。高速車両が来るぞ。"},
-    {wave:3,code:"03 / 装甲の影",speaker:"整備長ガク",line:"徹甲弾の備蓄は少ない。砲台の置き方で稼いでくれ。"},
-    {wave:4,code:"04 / 空の異変",speaker:"管制官ミナ",line:"ドローン反応多数。敵は地上戦だけじゃない。"},
-    {wave:5,code:"05 / 第一突破部隊",speaker:"司令部",line:"敵指揮官を確認。これがただの襲撃なら、なぜここまで執拗なのか。"},
-    {wave:6,code:"06 / 消えた通信",speaker:"偵察兵レン",line:"後方基地からの連絡が途絶えた。援軍は来ないかもしれない。"},
-    {wave:8,code:"07 / 敵の目的",speaker:"管制官ミナ",line:"敵は基地じゃなく、地下の旧通信施設を狙ってる。"},
-    {wave:10,code:"08 / 友軍識別信号",speaker:"整備長ガク",line:"待て、敵の指揮系統に友軍の識別コードが混じってるぞ。"},
-    {wave:12,code:"09 / 封印命令",speaker:"司令部",line:"旧通信施設の調査を禁ずる。防衛に専念せよ。理由は伝えられない。"},
-    {wave:15,code:"10 / 裏切りの輪郭",speaker:"偵察兵レン",line:"敵は暴走じゃない。誰かが命令してる。しかも内側から。"},
-    {wave:17,code:"11 / 避難列車",speaker:"管制官ミナ",line:"列車は最後の橋に入った。あと少しだけ、道を守って。"},
-    {wave:19,code:"12 / 最後の命令",speaker:"司令部",line:"旧施設の全記録を消去せよ。……従うかどうかは、君に任せる。"},
-    {wave:20,code:"13 / 鉄の夜明け",speaker:"管制官ミナ",line:"最終部隊接近。街の夜明けを、この防衛線でつくろう。"}
+    {wave:1,code:"第1章 / 峡谷",speaker:"ミナ",line:"避難列車が来る。ここを守って。"},
+    {wave:4,code:"装甲の影",speaker:"ガク",line:"戦車だ！ミサイルの準備を。"},
+    {wave:7,code:"空の敵影",speaker:"レン",line:"ドローン接近！対空砲を使って。"},
+    {wave:10,code:"峡谷の夜明け",speaker:"ミナ",line:"突破部隊だ。これを止めれば道が開く！"},
+    {wave:11,code:"第2章 / 砂漠",speaker:"レン",line:"砂塵の中から高速車両が来る。"},
+    {wave:16,code:"消えた通信",speaker:"ミナ",line:"後方との通信が途絶えた……。"},
+    {wave:20,code:"砂漠の決戦",speaker:"ガク",line:"敵に友軍の識別信号があるぞ。"},
+    {wave:21,code:"第3章 / 雪嶺",speaker:"レン",line:"空を見ろ。ドローンの編隊だ！"},
+    {wave:26,code:"封印命令",speaker:"司令部",line:"旧施設の調査を禁ずる。"},
+    {wave:30,code:"凍てつく真相",speaker:"ミナ",line:"誰かが内部から敵を操っている……。"},
+    {wave:31,code:"第4章 / 要塞",speaker:"ガク",line:"重戦車軍団だ。全火力を集中！"},
+    {wave:37,code:"最後の橋",speaker:"ミナ",line:"列車が最後の橋に入った。"},
+    {wave:40,code:"夜明け",speaker:"ミナ",line:"この戦いで、街の明日が決まる。"}
   ];
   const storyAt=n=>STORY.find(s=>s.wave===n);
   const storyLead=n=>STORY.filter(s=>s.wave<=n).slice(-1)[0];
@@ -148,7 +151,8 @@
     try{
       const raw=JSON.parse(localStorage.getItem(SAVE_KEY)||"{}");
       const levels={};RESEARCH.forEach(r=>levels[r.id]=raw.levels&&raw.levels[r.id]===1?1:0);
-      return {points:Math.max(0,Math.min(99999,Number(raw.points)||0)),best:Math.max(0,Math.min(20,Number(raw.best)||0)),runs:Math.max(0,Number(raw.runs)||0),stages:Math.max(1,Math.min(4,Number(raw.stages)||Math.ceil((Number(raw.best)||0)/5)||1)),levels};
+      // Preserve stage unlocks from v3 (5-wave stages) rather than reinterpreting old best waves.
+      return {points:Math.max(0,Math.min(99999,Number(raw.points)||0)),best:Math.max(0,Math.min(40,Number(raw.best)||0)),runs:Math.max(0,Number(raw.runs)||0),stages:Math.max(1,Math.min(4,Number(raw.stages)||Math.ceil((Number(raw.best)||0)/5)||1)),levels};
     }catch(_){return {points:0,best:0,runs:0,stages:1,levels:{power:0,supply:0,reroll:0}};}
   }
   const commander=loadCommander();
@@ -168,8 +172,8 @@
     const n=$("guide-text");if(!n)return;
     n.textContent=localWave(state.wave)===0&&!towers.length?"① 光る＋に銃を置こう":
       localWave(state.wave)===0?"② ▶ でスタート":
-      state.wave===1&&state.active?"③ 銃身が回転して敵を撃破！":
-      state.wave===1?"④ 榴弾砲が解放！範囲攻撃を試してみよう":"兵器を強化して次の敵部隊に備えよう！";
+      localWave(state.wave)===1&&state.active?"③ 銃身が回転して敵を撃破！":
+      localWave(state.wave)===1?"④ 榴弾砲で集団をまとめて撃破":"敵の種類を見て兵器を選ぼう！";
   }
   let draftForWave=0, strikeAiming=false, strikeRings=[], combatTexts=[];
   const TACTICS = [
@@ -191,7 +195,7 @@
     PATH=STAGES[stageIndex].path;
     PADS=STAGES[stageIndex].pads;
     state = {
-      hp:20, maxHp:20, money:350+stageIndex*330, wave:STAGES[stageIndex].start, active:false,
+      hp:20, maxHp:20, money:350+stageIndex*500, wave:STAGES[stageIndex].start, active:false,
       waveLeaks:{},lastWaveReport:"",suggestedTower:"machinegun",
       enemySeed:Math.floor(Math.random()*4294967296),
       paused:false, speed:1, finished:false,
@@ -238,8 +242,12 @@
   const towerAt = index => towers.find(t => t.pad === index);
   const FUSIONS={
     "cannon+machinegun":{name:"焼夷弾幕",tag:"HE×MG",color:"#ffb36d",desc:"機関銃の一定弾数が小範囲に延焼"},
+    "flak+machinegun":{name:"対空弾幕",tag:"AA×MG",color:"#8de8ff",desc:"機関銃の対ドローン性能が上がる"},
+    "cannon+flak":{name:"近接信管",tag:"HE×AA",color:"#ffc97b",desc:"対空砲の爆風が広がる"},
     "machinegun+missile":{name:"追尾連装",tag:"MG×MS",color:"#ffe28a",desc:"機関銃が対装甲小型ロケットを追加発射"},
     "machinegun+radar":{name:"妨害射撃",tag:"MG×EW",color:"#8cfff1",desc:"機関銃が命中した敵を減速させる"},
+    "flak+missile":{name:"防空ネット",tag:"AA×MS",color:"#93e8ff",desc:"対空砲がドローンへ集中砲火"},
+    "flak+radar":{name:"電子照準",tag:"AA×EW",color:"#93e8ff",desc:"対空砲がドローンをマーク"},
     "cannon+missile":{name:"破片散弾",tag:"HE×MS",color:"#ffcb8b",desc:"榴弾砲の爆発範囲が広がる"},
     "cannon+radar":{name:"EMP榴弾",tag:"HE×EW",color:"#8ae5ff",desc:"榴弾砲の爆発が敵を減速させる"},
     "missile+radar":{name:"標的捕捉",tag:"MS×EW",color:"#a1e8ff",desc:"ミサイルが戦車・ドローンを狙い撃つ"}
@@ -324,6 +332,7 @@
     t.range*=t.type==="radar"?1.035:1.02;
     if(t.type==="cannon")t.blast+=2;
     if(t.type==="missile")t.blast+=1;
+    if(t.type==="flak")t.range+=1.8;
 
     burst(t.x,t.y,"#c7ee86",35);sfx("unlock");kick=3;
     if(t.type==="machinegun"&&(t.level===3||t.level===5)){
@@ -345,21 +354,22 @@
   }
 
   function waveProfile(n) {
-    const local=(n-1)%5+1;
-    const unitCount=9+Math.floor(local*2.1)+stageIndex;
-    const tank=local===3 || (stageIndex>=1&&local>=2);
-    const drone=(local>=4)||(stageIndex>=2&&local>=2);
-    const rush=local%4===2;
-    const swarm=local%4===1;
-    return {unitCount,tank,drone,rush,swarm,boss:local===5,
-      label:local===5?"⚠ ボス部隊":
-        (rush?"高速突破部隊":swarm?"歩兵の大群":tank?"重装甲突撃":drone?"ドローン奇襲":"混成戦闘部隊")};
+    const local=Math.max(1,Math.min(WAVES_PER_STAGE,n-STAGES[stageIndex].start));
+    const focus=local===10?"boss":local===1||local===2?"infantry":
+      stageIndex===1&&local%3!==0?"car":stageIndex===2&&(local>=7||local%3!==0)?"drone":
+      stageIndex===3&&local%3!==0?"tank":
+      [3,6,9].includes(local)?"car":[4,8].includes(local)?"tank":local===7?"drone":"infantry";
+    const unitCount=7+Math.floor(local*1.75)+stageIndex;
+    const rush=focus==="car",swarm=focus==="infantry",tank=focus==="tank",drone=focus==="drone";
+    return {local,focus,unitCount,tank,drone,rush,swarm,boss:local===10,
+      label:focus==="boss"?"⚠ ボス接近":focus==="car"?"🚗 高速車両":
+        focus==="tank"?"🛡 重装甲戦車":focus==="drone"?"🚁 ドローン群":"👣 歩兵部隊"};
   }
   const COUNTER_TIPS={
     infantry:{name:"歩兵",weapon:"cannon",tip:"榴弾砲を増やそう"},
     car:{name:"車両",weapon:"cannon",tip:"榴弾砲を追加しよう"},
     tank:{name:"戦車",weapon:"missile",tip:"ミサイルを増やそう"},
-    drone:{name:"ドローン",weapon:"missile",tip:"ミサイルで迎撃しよう"},
+    drone:{name:"ドローン",weapon:"flak",tip:"対空砲で迎撃しよう"},
     boss:{name:"ボス",weapon:"missile",tip:"ミサイルを強化しよう"}
   };
   function waveLeakReport(){
@@ -370,34 +380,34 @@
     return "⚠ "+tip.name+count+"体突破 → "+tip.tip;
   }
   function nextWaveAdvice(n){
-    const p=waveProfile(Math.min(20,n));
+    const p=waveProfile(Math.min(stageEnd(),n));
     return p.boss?"強敵！ミサイルを増やそう":
-      p.rush?"速い敵！榴弾砲を曲がり角に":
+      p.rush?"速い敵！電子戦で足止め":
       p.tank?"戦車対策にミサイルを配置":
-      p.drone?"ドローン対策にミサイルを配置":
+      p.drone?"ドローン対策に対空砲を配置":
       p.swarm?"歩兵の大群！榴弾砲で範囲攻撃":
       "配置と強化で敵に備えよう";
   }
   function recommendNextWeapon(n){
-    const p=waveProfile(Math.min(20,n));
-    return p.boss?"missile":p.rush?"cannon":p.tank||p.drone?"missile":p.swarm?"cannon":"machinegun";
+    const p=waveProfile(Math.min(stageEnd(),n));
+    return p.boss||p.tank?"missile":p.drone?"flak":p.rush?"radar":p.swarm?"cannon":"machinegun";
   }
   function waveKinds(n) {
     const profile=waveProfile(n),result=[];
     for(let i=0;i<profile.unitCount;i++){
-      // Each wave has a readable primary threat; rush waves must not secretly
-      // combine maximum tanks, drones and fast cars at the same time.
-      let kind="infantry";
-      if(profile.rush&&!profile.boss){
-        if(i%3===0)kind="car";
-        if(profile.drone&&i%8===1)kind="drone";
-        if(profile.tank&&i%12===6)kind="tank";
-      }else{
-        if(n>=2&&i%(n<=3?5:3)===0)kind="car";
-        if(profile.tank&&i%6===0)kind="tank";
-        if(profile.drone&&i%4===1)kind="drone";
-        if(n%5===0&&i%(n===5?7:6)===0)kind="tank";
+      // Telegraph a clear counter: each wave is dominated by ONE silhouette.
+      let kind=profile.focus;
+      if(profile.boss){
+        kind=stageIndex===1?(i%6===0?"tank":"car"):
+          stageIndex===2?(i%5===0?"tank":"drone"):
+          stageIndex===3?(i%4===0?"car":"tank"):
+          i%5===0?"tank":i%4===1?"drone":"car";
       }
+      else if(profile.local<=2){kind=i%6===0&&profile.local===2?"car":"infantry";}
+      else if(profile.focus==="car"){kind=i%6===0?"infantry":"car";}
+      else if(profile.focus==="tank"){kind=stageIndex===3?(i%3===0?"car":"tank"):(i%3===0?"tank":"car");}
+      else if(profile.focus==="drone"){kind=i%5===0?"infantry":"drone";}
+      else {kind=i%6===0?"car":"infantry";}
       result.push(kind);
     }
     if(profile.boss)result.push("boss");
@@ -453,7 +463,7 @@
     const dispatch=storyAt(n);
     notice(dispatch?"📡 "+dispatch.line.slice(0,19):"敵接近："+waveProfile(n).label);
     missionBanner=2.25;screenFlash=.17;
-    $("wave-alert").textContent="第"+n+"波："+waveProfile(n).label;
+    $("wave-alert").textContent="第"+localWave(n)+"波："+waveProfile(n).label;
     $("wave-alert").classList.remove("hidden");
   }
   function startWave() {
@@ -486,25 +496,32 @@
   function spawnEnemy(kind) {
     const d = KIND[kind];
     const w=localWave(state.wave)-1;
-    // Enemy growth leaves time to learn counters; elite spikes begin after the first boss.
-    const late=Math.max(0,w-5);
-    const scale=(1+w*.125+w*w*.009+late*late*.055)*(1+stageIndex*.30);
+    // Every stage has ten waves of meaningful growth, but the *counter* matters more than level.
+    const scale=(1+w*.105+w*w*.011)*(1+stageIndex*.27);
     // An independent enemy RNG keeps difficulty stable regardless of particles and sound.
     state.enemySeed=(Math.imul(state.enemySeed,1664525)+1013904223)>>>0;
-    const elite=kind!=="boss" && state.wave>=6 && state.enemySeed/4294967296<Math.min(.32,.055+(state.wave-5)*.017);
+    const elite=kind!=="boss" && w>=5 && state.enemySeed/4294967296<Math.min(.25,.045+w*.015);
     return {
       id:nextEnemyId++, kind,
       x:PATH[0][0], y:PATH[0][1],
       segment:0, hp:d.hp*scale*(elite?1.65:1), maxHp:d.hp*scale*(elite?1.65:1),
-      speed:d.speed*(1+Math.min(.25,w*.015))*(elite?1.10:1)*(doctrine==="salvage"?1.12:1), armor:d.armor, reward:d.reward*(elite?3:1), elite,
-      damage:d.damage, color:d.color,
+      speed:d.speed*(1+Math.min(.25,w*.015))*(elite?1.10:1)*(doctrine==="salvage"?1.12:1)*(stageIndex===2&&kind==="drone"?.83:1), armor:d.armor, reward:d.reward*(elite?3:1), elite,
+      damage:kind==="tank"&&stageIndex===0?1:d.damage, color:d.color,
       slowTime:0, alive:true, angle:0
     };
   }
 
   function moveEnemy(e, dt) {
-    const slowFactor = e.slowTime > 0 ? .55 : 1;
+    const slowFactor = e.slowTime > 0 ? (e.empTime>0?.34:.55) : 1;
     e.slowTime = Math.max(0,e.slowTime-dt);
+    e.empTime=Math.max(0,(e.empTime||0)-dt);
+    e.markTime=Math.max(0,(e.markTime||0)-dt);
+    e.burnTime=Math.max(0,(e.burnTime||0)-dt);
+    if(e.burnTime>0&&e.burnSource){
+      hurt(e,(e.burnDps||7)*dt,e.burnSource);
+      if(!e.alive)return;
+      if(Math.random()<.3)effects.push({x:e.x+(Math.random()-.5)*9,y:e.y,vx:(Math.random()-.5)*16,vy:-22,life:.38,max:.38,color:"#ff873d",size:3});
+    }
     let travel = e.speed * slowFactor * dt;
 
     while (travel > 0 && e.segment < PATH.length-1) {
@@ -577,15 +594,19 @@
     const armor = e.armor * (1-Math.min(.9,source.pierce));
     const crit = Math.random()<source.critical ? 1.8 : 1;
     const matchup=source.type==="machinegun"?
-      (source.branch==="rail"?(e.kind==="tank"||e.kind==="boss"?2.1:e.kind==="car"?1.3:.8):
-       source.branch==="tesla"?(e.kind==="drone"?1.6:e.kind==="tank"?.55:1.05):
-       source.branch==="gatling"?(e.kind==="infantry"?1.15:e.kind==="tank"?.38:e.kind==="drone"?.58:.75):
-       (e.kind==="tank"?.48:e.kind==="drone"?.55:e.kind==="car"?.72:1)):
-      source.type==="cannon"?(e.kind==="infantry"?1.25:e.kind==="car"?1.2:e.kind==="drone"?.38:.8):
-      source.type==="missile"?(e.kind==="tank"?2.0:e.kind==="drone"?1.8:e.kind==="boss"?1.6:.75):1;
+      (source.branch==="rail"?(e.kind==="tank"||e.kind==="boss"?2.45:e.kind==="car"?1.1:.55):
+       source.branch==="tesla"?(e.kind==="drone"?1.45:e.kind==="tank"?.20:1.08):
+       source.branch==="gatling"?(e.kind==="infantry"?1.35:e.kind==="tank"?.06:e.kind==="drone"?.12:.8):
+       (e.kind==="tank"?.065:e.kind==="boss"?.10:e.kind==="drone"?.13:e.kind==="car"?.65:1.25)):
+      source.type==="cannon"?(e.kind==="infantry"?1.4:e.kind==="car"?1.5:e.kind==="drone"?.09:e.kind==="tank"?.48:.42):
+      source.type==="flak"?(e.kind==="drone"?2.65:e.kind==="infantry"?.38:e.kind==="car"?.34:e.kind==="tank"?.11:.2):
+      source.type==="missile"?(e.kind==="tank"?2.25:e.kind==="boss"?2.1:e.kind==="drone"?.95:e.kind==="car"?.7:.4):1;
     const link=fusionFor(source);
-    const bonus=link&&link.info.name==="標的捕捉"&&(e.kind==="tank"||e.kind==="drone")?1.24:1;
-    const actual=amount*(1-armor)*crit*matchup*bonus;
+    const bonus=link&&link.info.name==="標的捕捉"&&(e.kind==="tank"||e.kind==="drone")?1.24:
+      link&&link.info.name==="対空弾幕"&&e.kind==="drone"?2.5:
+      link&&link.info.name==="防空ネット"&&e.kind==="drone"?1.28:1;
+    const tagged=source.type==="missile"&&e.markTime>0?1+(e.markStrength||.35):1;
+    const actual=amount*(1-armor)*crit*matchup*bonus*tagged;
     e.hp -= actual;
     if(actual>15 && Math.random()<.35)combatTexts.push({x:e.x,y:e.y-18,text:"-"+Math.round(actual),life:.65,color:crit>1?"#ffe88d":"#e7f2d2"});
     if(source.slow)e.slowTime=Math.max(e.slowTime,1.5);
@@ -619,9 +640,14 @@
   function fireTower(t,target) {
     if(t.type==="radar"){
       enemies.forEach(e=>{
-        if(e.alive&&distance(t,e)<t.range)
-          e.slowTime=Math.max(e.slowTime,.8);
+        if(e.alive&&distance(t,e)<t.range){
+          e.slowTime=Math.max(e.slowTime,1.25);
+          if(t.branch==="empfield")e.empTime=Math.max(e.empTime||0,1.4);
+          e.markTime=Math.max(e.markTime||0,1.3);
+          e.markStrength=Math.max(e.markStrength||0,t.branch==="targetlock"?.70:.35);
+        }
       });
+      shockwaves.push({x:t.x,y:t.y,r:t.range*.2,max:t.range,life:.55,color:t.branch==="empfield"?"#a99aff":"#68eaff"});
       return;
     }
 
@@ -668,7 +694,7 @@
       return;
     }
     t.recoil=1;t.glow=.16;t.spin+=1;
-    const count=t.type==="machinegun"?(t.awakened?6:t.branch==="gatling"?4:t.level>=5?4:t.level>=3?2:1):1;
+    const count=t.type==="machinegun"?(t.awakened?6:t.branch==="gatling"?4:t.level>=5?4:t.level>=3?2:1):t.type==="flak"?2:t.type==="missile"&&t.branch==="swarm"?3:1;
     if(t.type!=="machinegun"||Math.random()<.2)sfx(t.type==="machinegun"?"shot":"boom");
     for(let shot=0;shot<count;shot++){
     const angle=t.angle+(shot-(count-1)/2)*.065;
@@ -676,8 +702,8 @@
       x:t.x+Math.cos(angle)*25,y:t.y+Math.sin(angle)*25,px:t.x,py:t.y,targetId:target.id,
       tx:target.x,ty:target.y,
       speed:t.type==="missile"?310:
-            t.type==="cannon"?380:650,
-      damage:damage*(count>1?.43:1),source:t,type:t.type,
+            t.type==="cannon"?380:t.type==="flak"?510:650,
+      damage:damage*(t.type==="flak"?.55:t.type==="missile"&&t.branch==="swarm"?.59:count>1?.43:1),source:t,type:t.type,
       color:d.color,alive:true
     });}
     flashes.push({x:t.x+Math.cos(t.angle)*30,y:t.y+Math.sin(t.angle)*30,life:.14});
@@ -705,16 +731,17 @@
       strikeRings.push({x:b.x,y:b.y,radius:2,life:.52});
       for(let n=0;n<10;n++)smokes.push({x:b.x+(Math.random()-.5)*35,y:b.y+(Math.random()-.5)*35,r:5+Math.random()*8,life:.5+Math.random()*.5});
     }
-    burst(b.x,b.y,b.type==="missile"?"#ff964c":"#ffcf79",
+    burst(b.x,b.y,b.type==="missile"?"#ff964c":b.type==="flak"?"#76eaff":"#ffcf79",
       b.type==="machinegun"?4:18);
 
     if(target && target.alive)hurt(target,b.damage,b.special==="hunter"?{...b.source,type:"missile"}:b.source);
 
-    let radius = b.type==="cannon"?37:
-                 b.type==="missile"?19:0;
+    let radius = b.type==="cannon"?43:
+                 b.type==="missile"?21:b.type==="flak"?26:0;
     radius += b.source.blast;
     const combo=fusionFor(b.source);
     if(combo&&combo.info.name==="破片散弾"&&b.type==="cannon")radius+=13;
+    if(combo&&combo.info.name==="近接信管"&&b.type==="flak")radius+=13;
     if(combo&&combo.info.name==="焼夷弾幕"&&b.type==="machinegun"){
       b.source.comboShots++;
       if(b.source.comboShots%7===0){
@@ -729,6 +756,16 @@
            Math.hypot(e.x-b.x,e.y-b.y)<radius)
           hurt(e,b.damage*.6,b.source);
       });
+    }
+    if(b.type==="cannon"&&b.source.branch==="incendiary"){
+      enemies.forEach(e=>{
+        if(e.alive&&Math.hypot(e.x-b.x,e.y-b.y)<radius+5){
+          e.burnTime=Math.max(e.burnTime||0,2.8);
+          e.burnDps=Math.max(e.burnDps||0,10*b.source.power);
+          e.burnSource=b.source;
+        }
+      });
+      burst(b.x,b.y,"#ff6e31",10);
     }
 
     if(b.source.chain && target){
@@ -763,6 +800,7 @@
   }
 
   function updateEffects(dt) {
+    if(state.towerHintTime>0)state.towerHintTime=Math.max(0,state.towerHintTime-dt);
     effects.forEach(p=>{
       p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;
       p.vx*=.95;p.vy*=.95;
@@ -786,6 +824,19 @@
       e.alive&&distance(t,e)<=t.range
     );
     if(!available.length)return null;
+    if(t.type==="flak"){
+      const aerial=available.filter(e=>e.kind==="drone");
+      if(aerial.length)return aerial.sort((a,b)=>a.hp-b.hp)[0];
+    }
+    if(t.type==="missile"){
+      const armored=available.filter(e=>e.kind==="tank"||e.kind==="boss");
+      if(armored.length)return armored.sort((a,b)=>a.hp-b.hp)[0];
+    }
+    if(t.type==="cannon"){
+      const crowded=available.map(e=>({e,n:available.filter(a=>distance(a,e)<55).length}));
+      crowded.sort((a,b)=>b.n-a.n);
+      if(crowded[0]?.n>=3)return crowded[0].e;
+    }
     available.sort((a,b)=>{
       const progress=e=>{if(e.segment>=PATH.length-1)return PATH.length;const to=PATH[e.segment+1],from=PATH[e.segment];const total=Math.hypot(to[0]-from[0],to[1]-from[1])||1;return e.segment+Math.max(0,1-Math.hypot(e.x-to[0],e.y-to[1])/total)};
       return progress(b)-progress(a);
@@ -798,6 +849,31 @@
     {id:"rail",name:"レールガン",icon:"🎯",tag:"超火力・装甲貫通",desc:"高威力の貫通電磁砲。重戦車・ボスへの切り札。",color:"#7be3ff"},
     {id:"tesla",name:"テスラチェーン",icon:"⚡",tag:"連鎖電撃・集団制圧",desc:"最大3体に連鎖電撃。密集部隊を一斉に足止め。",color:"#b5a5ff"}
   ];
+  const SPECIALIZATIONS={
+    cannon:[
+      {id:"cluster",name:"クラスター砲",icon:"💥",desc:"着弾範囲が一気に拡大",color:"#ffd174"},
+      {id:"incendiary",name:"焼夷榴弾",icon:"🔥",desc:"爆炎が敵を燃やし続ける",color:"#ff8e5f"}
+    ],
+    flak:[
+      {id:"skywall",name:"スカイウォール",icon:"🛡",desc:"ドローンに高速で集中砲火",color:"#91e9ff"},
+      {id:"shrapnel",name:"フレシェット弾",icon:"✴",desc:"散弾が広い空域を制圧",color:"#b7faff"}
+    ],
+    missile:[
+      {id:"bunker",name:"バンカーバスター",icon:"🚀",desc:"装甲を貫く巨大ミサイル",color:"#ffad66"},
+      {id:"swarm",name:"スウォーム連装",icon:"🎇",desc:"小型ミサイルを3連射",color:"#ffe08b"}
+    ],
+    radar:[
+      {id:"empfield",name:"EMPフィールド",icon:"⚡",desc:"敵の動きをさらに遅くする",color:"#85e7ff"},
+      {id:"targetlock",name:"戦術リンク",icon:"🎯",desc:"敵をマーキングし火力支援",color:"#b8b2ff"}
+    ]
+  };
+  const ROLE_HINT={
+    machinegun:"👣 歩兵向き・装甲には弱い",
+    cannon:"💥 集団攻撃・ドローンには弱い",
+    flak:"🚁 対空攻撃・装甲には弱い",
+    missile:"🛡 装甲破壊・単体に強い",
+    radar:"⚡ 敵を遅くして味方を支援"
+  };
   const PERKS={
     gatling:[
       {id:"ricochet",name:"跳弾",desc:"弾丸が別の敵に跳ね返る。",symbol:"↗"},
@@ -867,8 +943,24 @@
       return list.sort(()=>Math.random()-.5).slice(0,3);
     }
     let available=MODS.filter(m=>!t.mods.includes(m.id));
-    if(t.type==="radar")available=available.filter(m=>["range","rapid","slow","blast"].includes(m.id));
+    if(t.type==="radar")available=available.filter(m=>["range","rapid","slow"].includes(m.id));
+    if(t.type==="cannon")available=available.filter(m=>["power","rapid","blast","slow"].includes(m.id));
+    if(t.type==="flak")available=available.filter(m=>["rapid","range","blast","critical"].includes(m.id));
+    if(t.type==="missile")available=available.filter(m=>["power","rapid","pierce","blast"].includes(m.id));
     return available.sort(()=>Math.random()-.5).slice(0,3);
+  }
+  function specializeWeapon(t,protocol){
+    t.branch=protocol.id;t.evolution=protocol.name;t.glow=.8;
+    if(protocol.id==="cluster"){t.blast+=37;t.interval*=1.08;}
+    if(protocol.id==="incendiary"){t.power*=1.18;t.blast+=12;}
+    if(protocol.id==="skywall"){t.interval*=.62;t.range*=1.14;}
+    if(protocol.id==="shrapnel"){t.blast+=30;t.interval*=1.08;}
+    if(protocol.id==="bunker"){t.power*=1.65;t.pierce=1;t.interval*=1.18;}
+    if(protocol.id==="swarm"){t.interval*=1.18;}
+    if(protocol.id==="empfield"){t.interval*=.82;t.range*=1.12;}
+    if(protocol.id==="targetlock"){t.range*=1.24;}
+    combatTexts.push({x:t.x,y:t.y-43,text:protocol.name,life:1.6,color:protocol.color});
+    shockwaves.push({x:t.x,y:t.y,r:6,max:130,life:.8,color:protocol.color});
   }
   function padAreaLabel(pad){
     const [x,y]=PADS[pad];
@@ -878,12 +970,14 @@
   }
   function openEvolution() {
     if(state.choosing||state.finished)return;
-    const available=towers.filter(t=>t.type==="machinegun"?!t.branch||t.mods.length<2:t.mods.length<3);
+    const available=towers.filter(t=>!t.branch||t.mods.length<(t.type==="machinegun"?2:2));
     if(!available.length)return;
     state.choosing=true;state.paused=true;
     const selected=towerAt(selectedPad);
-    let t=available.find(a=>a.type==="machinegun"&&!a.branch)||
-      (selected&&available.includes(selected)?selected:available.sort((a,b)=>b.level-a.level)[0]);
+    const forecast=recommendNextWeapon(state.wave+1);
+    let t=selected&&available.includes(selected)?selected:
+      available.find(a=>a.type===forecast&&!a.branch)||
+      available.find(a=>!a.branch)||available[0];
     selectedPad=t.pad;
     $("evolution-modal").classList.remove("hidden");
     const title=$("evolution-title"),intro=$("evolution-description"),holder=$("evolution-options");
@@ -891,7 +985,7 @@
       holder.innerHTML="";
       // Choose WHICH gun evolves, not only which perk. This is a strategic allocation.
       const targets=document.createElement("div");targets.className="evolution-targets";
-      available.slice(0,6).forEach(candidate=>{
+      available.slice(0,8).forEach(candidate=>{
         const chip=document.createElement("button");chip.type="button";
         chip.className="evolution-target"+(candidate===t?" selected":"");
         chip.textContent=DEF[candidate.type].name+"・"+padAreaLabel(candidate.pad);
@@ -899,11 +993,10 @@
         targets.appendChild(chip);
       });
       holder.appendChild(targets);
-      const branchChoice=t.type==="machinegun"&&!t.branch;
-      title.textContent=branchChoice?"機関銃：進化ルート":t.branch?"専用能力の選択":"兵器改造";
-      intro.textContent=branchChoice?"攻撃方法が劇的に変化する進化先を選べ！":
-        t.branch?"能力を組み合わせて隠された覚醒を発見しよう！":"新しい能力を1つ選択してください";
-      const options=branchChoice?BRANCHES:evolutionChoices(t);
+      const branchChoice=!t.branch;
+      title.textContent=branchChoice?DEF[t.type].name+" 進化":t.branch?"追加カスタム":"兵器改造";
+      intro.textContent="";
+      const options=branchChoice?(t.type==="machinegun"?BRANCHES:SPECIALIZATIONS[t.type]):evolutionChoices(t);
       options.forEach(m=>{
         const button=document.createElement("button");
         button.className="evolution-choice "+(branchChoice?"branch-choice":"perk-choice");
@@ -912,17 +1005,19 @@
         const wrap=document.createElement("span");wrap.className="choice-copy";
         const strong=document.createElement("strong");strong.textContent=m.name;
         const desc=document.createElement("span");desc.textContent=m.desc;
-        if(branchChoice){const role=document.createElement("small");role.className="choice-role";role.textContent=m.id==="gatling"?"得意：歩兵・高速の大群　/　苦手：重装甲":m.id==="rail"?"得意：戦車・ボス　/　苦手：広域の雑魚": "得意：密集・高速部隊　/　苦手：単独の重装甲";desc.afterRole=role;}
+        if(branchChoice&&t.type==="machinegun"){const role=document.createElement("small");role.className="choice-role";role.textContent=m.id==="gatling"?"歩兵に特化":m.id==="rail"?"重戦車に特化":"連鎖と減速に特化";desc.afterRole=role;}
         wrap.append(strong,desc);if(desc.afterRole)wrap.append(desc.afterRole);
         if(m.tag){const tag=document.createElement("small");tag.textContent=m.tag;wrap.append(tag);}
         if(!branchChoice&&t.branch){const goal=document.createElement("small");goal.className="recipe-hint";goal.textContent=(t.branch==="gatling"&&["ricochet","barrage"].includes(m.id)||t.branch==="rail"&&["penetrate","overcharge"].includes(m.id)||t.branch==="tesla"&&["conduction","spread"].includes(m.id))?"★ 覚醒レシピの必須パーツ":"別系統のカスタマイズ";wrap.append(goal);}
         button.append(symbol,wrap);
         button.onclick=()=>{
           if(branchChoice){
-            t.branch=m.id;t.mods=[];t.evolution=null;
-            if(m.id==="gatling"){t.interval*=.72;t.power*=.72;t.range*=.90;}
-            if(m.id==="rail"){t.interval*=2.5;t.power*=9;t.pierce=1;t.range*=1.18;}
-            if(m.id==="tesla"){t.interval*=1.12;t.power*=2.1;t.chain=true;t.range*=.93;}
+            if(t.type==="machinegun"){
+              t.branch=m.id;t.mods=[];t.evolution=null;
+              if(m.id==="gatling"){t.interval*=.72;t.power*=.72;t.range*=.90;}
+              if(m.id==="rail"){t.interval*=2.5;t.power*=9;t.pierce=1;t.range*=1.18;}
+              if(m.id==="tesla"){t.interval*=1.12;t.power*=2.1;t.chain=true;t.range*=.93;}
+            }else specializeWeapon(t,m);
             t.glow=.5;kick=5;sfx("unlock");
             combatTexts.push({x:t.x,y:t.y-40,text:m.name+"!",life:2,color:m.color});
           }else{applyMod(t,m);checkEvolution(t);}
@@ -933,7 +1028,7 @@
           $("evolution-modal").classList.add("hidden");
           if(!t.awakened)notice((branchChoice?"進化完了：":"能力獲得：")+m.name);
           if(!state.active){
-            notice("進化完了！ 下の ▶ 第"+(state.wave+1)+"波 開始で進もう");
+            notice("進化完了！ ▶ 第"+(localWave(state.wave)+1)+"波へ");
             // One-screen UI: no programmatic page scrolling.
           }
           updateUI();
@@ -953,7 +1048,7 @@
   function finish(win) {
     state.finished=true;state.active=false;
     state.paused=true;
-    const gained=Math.floor(state.wave*3+Math.min(30,state.kills/6)+(win?80:0)+(win&&state.convoySafety>=2?20:0));
+    const gained=Math.floor(localWave(state.wave)*3+Math.min(30,state.kills/6)+(win?80:0)+(win&&state.convoySafety>=2?20:0));
     commander.points+=gained;commander.best=Math.max(commander.best,state.wave);commander.runs++;
     if(win)commander.stages=Math.max(commander.stages,Math.min(STAGES.length,stageIndex+2));
     saveCommander();
@@ -963,14 +1058,14 @@
     $("result-title").textContent=win?"作戦成功！":"防衛失敗";
     const failureHint=win?"":waveLeakReport();
     $("result-description").textContent=win?
-      (stageIndex<3?"🔓 次の戦場が解放！":"🏆 全戦場の防衛に成功！"):
+      (stageIndex<STAGES.length-1?"🔓 次の戦場が解放！":"🏆 全戦場の防衛に成功！"):
       (failureHint||"配置を変えて再挑戦！");
 
     const stars=state.hp===state.maxHp?3:state.hp>=11?2:1;
     $("result-stats").textContent=
       STAGES[stageIndex].icon+" "+STAGES[stageIndex].name+"　"+(win?"★".repeat(stars):"挑戦中");
     $("result-salvage").textContent="◆ +"+gained+"　 合計 "+commander.points;
-    $("retry-button").textContent=win&&stageIndex<3?"▶ 次のステージへ":win?"▶ ステージ選択":"↻ もう一度";
+    $("retry-button").textContent=win&&stageIndex<STAGES.length-1?"▶ 次のステージへ":win?"▶ ステージ選択":"↻ もう一度";
     updateUI();
   }
 
@@ -985,7 +1080,7 @@
     if(state.noteTime>0){
       state.noteTime-=dt;
       if(state.noteTime<=0)
-        $("battle-message").textContent=state.active?"防衛作戦進行中":"第"+state.wave+"波 突破！ 次の作戦へ";
+        $("battle-message").textContent=state.active?"防衛作戦進行中":"第"+localWave(state.wave)+"波 突破！";
     }
 
     if(!state.active)return;
@@ -1001,7 +1096,7 @@
       if(state.wavePlan==="mines"&&state.spawnedThisWave<=6)foe.operationPending="mines";
       if(state.wavePlan==="barrage"&&state.spawnedThisWave<=6)foe.operationPending="barrage";
       enemies.push(foe);
-      state.spawnTimer=waveProfile(state.wave).rush?.24:waveProfile(state.wave).swarm?.26:.28;
+      state.spawnTimer=waveProfile(state.wave).rush?.27:waveProfile(state.wave).swarm?.25:.32;
     }
 
     enemies.forEach(e=>{
@@ -1037,22 +1132,22 @@
         notice("✓ 敵を全員撃破！基地の体力が１回復");
       }
       if(!Object.keys(state.waveLeaks).length)state.suggestedTower=recommendNextWeapon(state.wave+1);
-      state.money+=state.wave===2?170:state.wave<3?50:Math.min(100,45+state.wave*6);
-      if(state.hp===state.maxHp)state.money+=state.wave<3?20:10;
+      const cleared=localWave(state.wave);
+      state.money+=cleared===2?165:cleared<3?60:Math.min(180,65+cleared*11);
+      if(state.hp===state.maxHp)state.money+=cleared<3?20:15;
       state.xp+=15;
       state.wavePlan=null;state.operationName=null;
-      const newly=state.wave===1?"cannon":state.wave===2?"missile":state.wave===3?"radar":null;
+      const newly=cleared===1?"cannon":cleared===2?"flak":cleared===3?"missile":cleared===4?"radar":null;
       if(newly){notice("🎉 "+DEF[newly].name+" 解放！");sfx("unlock");
         const card=document.querySelector('[data-tower="'+newly+'"]');if(card)card.classList.add("unlocked");
-      }else notice("第"+state.wave+"波 突破！");
+      }else notice("第"+localWave(state.wave)+"波 突破！");
       if(state.wave>=stageEnd()){
         finish(true);return;
       }
     }
 
-    if(!state.active&&state.wave>0&&state.wave%3===0&&state.xp>=state.xpNeed&&
-       towers.some(t=>t.type==="machinegun"?
-         (!t.branch||t.mods.length<2):t.mods.length<3)){
+    if(!state.active&&state.wave>STAGES[stageIndex].start&&localWave(state.wave)%3===0&&state.xp>=state.xpNeed&&
+       towers.some(t=>!t.branch||t.mods.length<2)){
       openEvolution();
     }
 
@@ -1115,6 +1210,162 @@
       line(x-r/2,y+r/3,x+r/3,y-r/2,"#8c9d78",1);
     }
   }
+  // Each battlefield has its own illustrated geography, architecture and motion.
+  // Deterministic decoration: no random layout jitter between animation frames.
+  function drawWorld(theme){
+    ctx.save();
+    if(theme==="canyon"){
+      // A copper gorge cut into green rock, with a turquoise river running below.
+      const water=ctx.createLinearGradient(0,0,W,0);
+      water.addColorStop(0,"#174f57");water.addColorStop(.5,"#3b9b9b");water.addColorStop(1,"#123e49");
+      polygon([[0,0],[26,0],[12,520],[0,520]],water);
+      for(let j=0;j<13;j++){
+        const y=j*43+15;line(2,y,20,y-9,"#b0e9d16c",2);
+      }
+      const cliffs=[
+        [[150,-24],[305,-24],[350,47],[305,90],[193,73],[159,45]],
+        [[-30,287],[50,300],[88,385],[65,484],[-30,520]],
+        [[205,392],[283,403],[327,520],[154,520],[166,457]]
+      ];
+      cliffs.forEach((pts,i)=>{
+        polygon(pts,"#1d3436","#102c30",4);
+        polygon(pts.map(([x,y],k)=>[x+(k%2?7:-10),y-9]),i%2?"#53704d":"#65764d","#9e9362",2);
+        for(let k=0;k<5;k++){const p=pts[k%pts.length];line(p[0]+k*8,p[1]+8,p[0]+k*8+21,p[1]+28,"#d8ad7359",2);}
+      });
+      for(let j=0;j<22;j++){
+        const x=(j*79+64)%W,y=(j*137+30)%H;
+        if(x<40)continue;
+        polygon([[x-12,y+8],[x-7,y-9],[x+7,y-14],[x+15,y+7]],"#263d36","#718665",1);
+        polygon([[x-7,y-9],[x+7,y-14],[x+3,y+2]],"#9aa5796e");
+      }
+      for(const [x,y] of [[42,420],[370,46],[285,88]]){
+        circle(x,y,18,"#132d2e66");polygon([[x-14,y+8],[x-4,y-14],[x+7,y-17],[x+17,y+5]],"#72856d","#b8b487",2);
+      }
+    }else if(theme==="desert"){
+      // Sculpted dunes and the remains of a desert military outpost.
+      for(let b=0;b<7;b++){
+        ctx.beginPath();const y=b*86-35;
+        ctx.moveTo(-30,y+25);ctx.bezierCurveTo(65,y-50,125,y+46,210,y-3);
+        ctx.bezierCurveTo(305,y-65,350,y+52,425,y-9);
+        ctx.lineTo(425,y+68);ctx.lineTo(-30,y+68);ctx.closePath();
+        ctx.fillStyle=b%2?"#d9a96d45":"#e8c68a38";ctx.fill();
+        ctx.strokeStyle="#f3d29877";ctx.lineWidth=3;ctx.stroke();
+      }
+      for(const [x,y] of [[40,100],[310,48],[330,410]]){
+        // Broken sandstone watchtowers with cast shadows.
+        circle(x+10,y+12,27,"#3e38264f");
+        polygon([[x-21,y+12],[x-16,y-16],[x+5,y-30],[x+24,y-10],[x+20,y+13]],"#ac8156","#efd1a0",2);
+        polygon([[x-9,y+9],[x-7,y-9],[x+7,y-16],[x+10,y+10]],"#654c3b","#d5b383",2);
+        for(let i=0;i<3;i++)line(x-17,y-3+i*8,x+17,y-4+i*8,"#7c5f46",1);
+      }
+      for(let i=0;i<35;i++){
+        const x=(i*79+23)%W,y=(i*109+7)%H;
+        circle(x,y,2+i%3,"#e5c79766");
+        if(i%3===0){line(x-9,y+4,x+11,y,"#fce0ad58",1.5);}
+      }
+      for(const [x,y] of [[70,480],[235,59]]){
+        circle(x,y,24,"#59735a44");
+        line(x,y+8,x+2,y-17,"#654734",5);
+        for(let n=0;n<6;n++){
+          const a=n*Math.PI/3;line(x+2,y-18,x+Math.cos(a)*23,y-18+Math.sin(a)*11,"#486b4d",5);
+        }
+      }
+      // Wind-driven grains always travel diagonally, not as a full screen filter.
+      for(let i=0;i<12;i++){
+        const x=((i*73+ambientTime*15)%460)-30,y=(i*53+91)%520;
+        line(x,y,x+12,y-3,"#ffe2ab64",1.3);
+      }
+    }else if(theme==="snow"){
+      // Frozen lake, blue glacier walls and dark alpine conifers.
+      const lake=ctx.createLinearGradient(0,330,180,520);
+      lake.addColorStop(0,"#6ab4c0");lake.addColorStop(1,"#225c79");
+      polygon([[0,360],[90,353],[136,399],[185,520],[0,520]],lake,"#e0ffff",3);
+      for(let i=0;i<9;i++){
+        const x=12+i*21,y=388+i*13;
+        line(x,y,x+20,y+8,"#c7faff88",2);line(x+8,y-4,x+17,y+11,"#d5ffff66",1);
+      }
+      const walls=[
+        [[-25,-20],[155,-20],[125,61],[56,95],[-25,83]],
+        [[247,330],[408,297],[420,530],[262,535],[244,410]]
+      ];
+      walls.forEach((p,i)=>{
+        polygon(p,"#2c5e76","#b4e7ec",4);
+        polygon(p.map(([x,y],n)=>[x+(n%2?9:-8),y-12]),"#96cdd6","#e8ffff",2);
+        for(let j=1;j<5;j++){const q=p[j%p.length];polygon([[q[0]-10,q[1]+10],[q[0]+7,q[1]-16],[q[0]+19,q[1]+5]],j%2?"#e5faf6":"#70adc2");}
+      });
+      for(let i=0;i<25;i++){
+        const x=(i*71+19)%W,y=(i*113+29)%H;
+        if(x<20&&y>340)continue;
+        circle(x+3,y+6,10,"#214c5777");
+        polygon([[x-10,y+7],[x,y-20],[x+10,y+7]],"#1e5361","#b4dadd",1);
+        polygon([[x-8,y-1],[x,y-27],[x+8,y-1]],"#437d80","#d3f4ed",1);
+        line(x,y+7,x,y+12,"#4f747b",3);
+      }
+      for(let i=0;i<35;i++){
+        const x=((i*89+ambientTime*(7+i%3*4))%420)-15;
+        const y=(i*69+ambientTime*11)%540;
+        circle(x,y,1+i%3*.45,"#ffffffac");
+      }
+    }else if(theme==="factory"){
+      // A fortified industrial foundry: metal floors, molten channels, fans and pipes.
+      ctx.strokeStyle="#9bb3ba31";ctx.lineWidth=1.5;
+      for(let x=0;x<W;x+=48)line(x,0,x,H,"#8ba6a731",1.5);
+      for(let y=0;y<H;y+=46)line(0,y,W,y,"#8ba6a731",1.5);
+      const flow=ctx.createLinearGradient(0,0,80,0);
+      flow.addColorStop(0,"#742f22");flow.addColorStop(.5,"#ff7b32");flow.addColorStop(1,"#65251e");
+      polygon([[8,-5],[47,-5],[78,520],[19,520]],flow,"#4b2d2c",5);
+      for(let i=0;i<18;i++){
+        const y=(i*33+ambientTime*19)%535;
+        line(33,y,57,y+7,"#ffe89c88",3);
+      }
+      for(const [x,y,r] of [[275,58,33],[58,324,36],[335,402,23]]){
+        circle(x+7,y+8,r+5,"#0d1820b0");circle(x,y,r+4,"#242f37");
+        circle(x,y,r,"#52626b");circle(x,y,r*.72,"#192b35");
+        ctx.save();ctx.translate(x,y);ctx.rotate(ambientTime*.7);
+        for(let j=0;j<5;j++){
+          const a=j*Math.PI*2/5;
+          polygon([[0,0],[Math.cos(a)*r*.65-8,Math.sin(a)*r*.65-4],[Math.cos(a)*r*.9+4,Math.sin(a)*r*.9+10]],"#81969c");
+        }ctx.restore();circle(x,y,6,"#b5d1d2");
+      }
+      for(const [x,y,w] of [[172,40,85],[184,490,64],[335,335,80]]){
+        rounded(x-w/2,y-8,w,16,3,"#172832");
+        rounded(x-w/2,y-6,w,9,3,"#70818a");
+        for(let i=0;i<w;i+=17)circle(x-w/2+i+5,y-1,2,"#c1d3d2");
+      }
+      for(const [x,y] of [[100,40],[351,99],[47,464]]){
+        circle(x,y,18,"#263b46");circle(x,y,10,"#ed8d46");
+        circle(x,y,4+Math.sin(ambientTime*4)*2,"#fff09c");
+      }
+    }
+    ctx.restore();
+  }
+  function drawRoadMarkings(theme){
+    // Material details follow each piece of the path, making every map tangible.
+    ctx.save();
+    for(let k=0;k<PATH.length-1;k++){
+      const [x1,y1]=PATH[k], [x2,y2]=PATH[k+1];
+      const dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy)||1;
+      for(let d=23;d<len-9;d+=theme==="factory"?28:42){
+        const x=x1+dx*d/len,y=y1+dy*d/len;
+        ctx.save();ctx.translate(x,y);ctx.rotate(Math.atan2(dy,dx));
+        if(theme==="factory"){
+          rounded(-5,-23,10,45,1,"#31414b4d");
+          line(-7,-23,7,-23,"#ffbc56b2",2);line(-7,23,7,23,"#ffbc56b2",2);
+          circle(0,-28,2,"#c6d9e0");circle(0,28,2,"#c6d9e0");
+        }else if(theme==="snow"){
+          line(-4,-24,4,-24,"#ebffffbc",3);line(-4,24,4,24,"#ebffffbc",3);
+          line(-8,-15,8,-15,"#6a91a65c",1);
+        }else if(theme==="desert"){
+          line(-12,-23,10,-23,"#f7dfad7d",2);
+          line(-12,23,10,23,"#f7dfad7d",2);
+        }else{
+          circle(0,-27,3,"#d0b67c");circle(0,27,3,"#d0b67c");
+        }
+        ctx.restore();
+      }
+    }
+    ctx.restore();
+  }
   function drawTerrain() {
     const theme=STAGES[stageIndex].theme;
     const palettes={canyon:["#344d43","#405d4d","#1c3c37"],desert:["#66543f","#8b7650","#4b5140"],snow:["#455f68","#8bafaf","#253f52"],factory:["#3a424b","#56605c","#222e3b"]};
@@ -1126,16 +1377,18 @@
     ctx.strokeStyle="#b5d8ab0c";ctx.lineWidth=1;
     for(let x=0;x<=W;x+=32)line(x,0,x,H,"#d9f2db10");
     for(let y=0;y<=H;y+=32)line(0,y,W,y,"#d9f2db10");
-    terrainTexture();
+    if(theme==="canyon")terrainTexture();
+    drawWorld(theme);
     ctx.lineCap="round";ctx.lineJoin="round";
     ctx.beginPath();
     PATH.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));
-    ctx.strokeStyle="#112d2b";ctx.lineWidth=66;ctx.stroke();
-    ctx.strokeStyle=theme==="snow"?"#7eaaaa":theme==="desert"?"#867958":theme==="factory"?"#52676a":"#536751";ctx.lineWidth=60;ctx.stroke();
-    ctx.strokeStyle="#77694f";ctx.lineWidth=51;ctx.stroke();
-    ctx.strokeStyle=theme==="snow"?"#a9c9cc":theme==="factory"?"#8b9795":"#b7a47c";ctx.lineWidth=44;ctx.stroke();
-    ctx.strokeStyle=theme==="snow"?"#d5e6e2":theme==="factory"?"#a9b4ae":"#c9ba95";ctx.lineWidth=36;ctx.stroke();
-    ctx.strokeStyle="#f8e3a164";ctx.lineWidth=1.6;ctx.setLineDash([10,12]);ctx.stroke();ctx.setLineDash([]);
+    ctx.strokeStyle=theme==="factory"?"#101b25":"#142e2edb";ctx.lineWidth=67;ctx.stroke();
+    ctx.strokeStyle=theme==="snow"?"#cce8e9":theme==="desert"?"#94744d":theme==="factory"?"#d49d47":"#647d63";ctx.lineWidth=61;ctx.stroke();
+    ctx.strokeStyle=theme==="snow"?"#72939f":theme==="desert"?"#9d805b":theme==="factory"?"#44535e":"#77694f";ctx.lineWidth=51;ctx.stroke();
+    ctx.strokeStyle=theme==="snow"?"#a6c5cc":theme==="factory"?"#6e7f89":theme==="desert"?"#c2a372":"#b7a47c";ctx.lineWidth=44;ctx.stroke();
+    ctx.strokeStyle=theme==="snow"?"#b9d4d9":theme==="factory"?"#87949c":theme==="desert"?"#e0bc82":"#c9ba95";ctx.lineWidth=36;ctx.stroke();
+    ctx.strokeStyle=theme==="factory"?"#ffbd5988":theme==="snow"?"#f0ffffac":"#f8e3a164";ctx.lineWidth=1.6;ctx.setLineDash([10,12]);ctx.stroke();ctx.setLineDash([]);
+    drawRoadMarkings(theme);
     // Danger line across the entry point.
     ctx.save();ctx.translate(14,PATH[0][1]);ctx.rotate(-Math.PI/2);
     ctx.fillStyle="#f46d55";ctx.fillRect(-13,-24,26,5);
@@ -1189,7 +1442,7 @@
     ctx.restore();
   }
   function drawTower(t) {
-    const color=t.type==="radar"?"#5ed9e5":t.type==="missile"?"#f3bd75":t.type==="cannon"?"#f2c77a":"#9fe1c1";
+    const color=t.type==="radar"?"#5ed9e5":t.type==="flak"?"#88e7ff":t.type==="missile"?"#f3bd75":t.type==="cannon"?"#f2c77a":"#9fe1c1";
     ctx.save();ctx.translate(t.x,t.y);
     ctx.shadowColor="#010d0caa";ctx.shadowBlur=10;ctx.shadowOffsetY=7;
     rounded(-22,-18,44,40,6,"#112a29");
@@ -1234,16 +1487,63 @@
         ctx.beginPath();ctx.arc(0,-18,17,Math.PI*1.05,Math.PI*1.95);ctx.stroke();circle(0,-33,5,"#e4d6ff");}
       }
     }else if(t.type==="cannon"){
-      rounded(-8,-12,16,28,4,"#243d37");
-      rounded(-5,-38,10,35,2,"#d5c4a0");
-      rounded(-7,-35,14,6,2,"#fff0c5");
+      rounded(-12,-15,24,32,5,"#243d37");
+      const barrels=t.level>=5?2:1;
+      for(let j=0;j<barrels;j++){
+        const x=(j-(barrels-1)/2)*12;
+        rounded(x-6,-42,12,39,2,"#5d5248");
+        rounded(x-4,-45,8,36,2,"#d6be8b");
+        rounded(x-7,-40,14,7,2,"#ffedbe");
+      }
       rounded(-12,-10,24,20,5,"#8c9983");
       circle(0,-6,6,"#506b5d");
+      for(let j=0;j<4;j++){const a=j*Math.PI/2+ambientTime*.25;circle(Math.cos(a)*10,Math.sin(a)*10-5,2,"#fff4d3");}
+      if(t.branch==="cluster"){
+        for(const x of [-17,17]){rounded(x-4,-19,8,24,3,"#e8be72");circle(x,-18,4,"#fff1bd");}
+      }
+      if(t.branch==="incendiary"){
+        for(const x of [-16,16]){rounded(x-4,-16,8,21,3,"#9e4127");circle(x,-13,4,"#ffb359");}
+        circle(0,-30,4+Math.sin(ambientTime*8)*2,"#ff7c3c");
+      }
+    }else if(t.type==="flak"){
+      // Sweeping twin anti-air barrels with high-speed pulse coils.
+      rounded(-17,-18,34,34,5,"#1b4a57");
+      rounded(-12,-15,24,27,4,"#3b8391");
+      for(const x of [-10,10]){
+        rounded(x-5,-46,10,39,3,"#194c62");
+        rounded(x-3,-49,6,41,2,"#a6eef7");
+        for(let j=0;j<4;j++)rounded(x-7,-38+j*9,14,3,1,"#4e9db4");
+        circle(x,-48,4+Math.sin(ambientTime*10+x)*.8,"#ecffff");
+      }
+      rounded(-7,-9,14,15,4,"#143e51");circle(0,-8,5,"#72e7ff");
+      if(t.branch==="skywall"){
+        for(const x of [-23,23]){rounded(x-3,-24,6,32,2,"#abeffe");circle(x,-27,5,"#75dfff");}
+        circle(0,-7,7+Math.sin(ambientTime*12)*2,"#d4fcff");
+      }
+      if(t.branch==="shrapnel"){
+        for(const x of [-21,21]){
+          polygon([[x-5,-11],[x,-37],[x+5,-11]],"#65c8e8");
+          circle(x,-37,4,"#c4f8ff");
+        }
+      }
     }else if(t.type==="missile"){
-      rounded(-18,-15,36,26,4,"#223f3b");
+      rounded(-18,-18,36,33,4,"#223f3b");
       for(let ix=-1;ix<=1;ix++)for(let iy=0;iy<2;iy++){
-        rounded(ix*10-4,iy*11-17,8,10,2,"#b4c8ae");
-        circle(ix*10,iy*11-12,3,"#f3bd75");
+        const x=ix*11,y=iy*12-13;
+        rounded(x-5,y-5,10,13,3,"#718984");
+        polygon([[x-4,y-1],[x,y-10],[x+4,y-1]],"#ffe0a2");
+        circle(x,y+1,3,"#b96244");
+      }
+      if(t.branch==="bunker"){
+        rounded(-9,-29,18,28,4,"#40504a");
+        polygon([[-9,-23],[0,-41],[9,-23]],"#ffe2a2");
+        rounded(-5,-19,10,17,2,"#e78d4f");
+      }
+      if(t.branch==="swarm"){
+        for(const x of [-23,23])for(const y of [-15,0]){
+          polygon([[x-3,y],[x,y-12],[x+3,y]],"#ffe7a7");
+          circle(x,y+3,3,"#e67f4d");
+        }
       }
     }else{
       rounded(-12,-13,24,20,4,"#224c55");
@@ -1251,6 +1551,17 @@
       ctx.beginPath();ctx.arc(0,-15,21,Math.PI*1.08,Math.PI*1.92);ctx.stroke();
       line(0,-15,0,-32,"#a1fcff",2);
       circle(0,-15,6,"#abf8fa");circle(0,-15,3,"#285463");
+      if(t.branch==="empfield"){
+        ctx.strokeStyle="#a998ff";ctx.lineWidth=3;
+        ctx.beginPath();ctx.arc(0,-15,27,Math.PI*1.08,Math.PI*1.92);ctx.stroke();
+        circle(0,-33,6,"#d6beff");
+      }
+      if(t.branch==="targetlock"){
+        for(const x of [-21,21]){
+          line(x,-19,x,-37,"#92f0ff",3);
+          circle(x,-38,4,"#f1ffff");
+        }
+      }
     }
     ctx.restore();
     ctx.strokeStyle=color;ctx.lineWidth=1.7;ctx.strokeRect(-20,-21,40,38);
@@ -1269,7 +1580,7 @@
     }
     rounded(-14,18,28,12,3,"#112b2d");
     ctx.fillStyle="#e9fcf2";ctx.font="900 10px Rajdhani,sans-serif";ctx.textAlign="center";
-    ctx.fillText((t.type==="machinegun"?"MG":t.type==="cannon"?"ART":t.type==="missile"?"MSL":"EW")+" "+t.level,0,27);
+    ctx.fillText((t.type==="machinegun"?"MG":t.type==="cannon"?"ART":t.type==="flak"?"AA":t.type==="missile"?"MSL":"EW")+" "+t.level,0,27);
     ctx.restore();
   }
   function drawEnemy(e) {
@@ -1314,6 +1625,11 @@
     ctx.fillStyle="#142526";ctx.fillRect(-r,-r-11,2*r,5);
     ctx.fillStyle=e.elite?"#ffda70":"#f16b58";
     ctx.fillRect(-r,-r-11,2*r*Math.max(0,e.hp/e.maxHp),5);
+    if(e.markTime>0){
+      ctx.strokeStyle="#7aecff";ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(0,0,r+5,Math.PI*1.17,Math.PI*1.87);ctx.stroke();
+      line(-6,0,6,0,"#7aecff88",1);line(0,-6,0,6,"#7aecff88",1);
+    }
     if(e.elite||large){
       ctx.fillStyle="#ffe3ae";ctx.font="900 10px Rajdhani,sans-serif";ctx.textAlign="center";
       ctx.fillText(large?"⚠ COMMANDER":"★ ELITE",0,-r-15);
@@ -1344,13 +1660,14 @@
 
     bullets.forEach(b=>{
       const dx=b.x-b.px,dy=b.y-b.py,m=Math.hypot(dx,dy)||1;
-      const len=b.type==="missile"?26:b.type==="cannon"?15:12;
+      const len=b.type==="missile"?26:b.type==="cannon"?15:b.type==="flak"?19:12;
       const tx=b.x-dx/m*len,ty=b.y-dy/m*len;
-      ctx.strokeStyle=b.type==="missile"?"#ff7b46":b.type==="cannon"?"#ffe49e":"#f6f5d8";
-      ctx.lineWidth=b.type==="missile"?5:b.type==="cannon"?3:2;
+      ctx.strokeStyle=b.type==="missile"?"#ff7b46":b.type==="cannon"?"#ffe49e":b.type==="flak"?"#60e7ff":"#f6f5d8";
+      ctx.lineWidth=b.type==="missile"?5:b.type==="cannon"?3:b.type==="flak"?3:2;
       line(tx,ty,b.x,b.y,ctx.strokeStyle,ctx.lineWidth);
-      circle(b.x,b.y,b.type==="missile"?5:3,"#fff6ce");
+      circle(b.x,b.y,b.type==="missile"?5:3,b.type==="flak"?"#e8ffff":"#fff6ce");
       if(b.type==="missile"){circle(tx,ty,8,"#ff913b44");circle(tx+2,ty+2,4,"#ffb53f");}
+      if(b.type==="flak"){circle(tx,ty,6,"#69e9ff48");}
     });
 
     strikeRings.forEach(p=>{
@@ -1427,7 +1744,7 @@
     if(nextButton){
       const showNext=state.wave>0&&!state.active&&!state.choosing&&!state.finished;
       nextButton.classList.toggle("hidden",!showNext);
-      if(showNext)nextButton.textContent="▶ 第"+(state.wave+1)+"波へ進む";
+      if(showNext)nextButton.textContent="▶ 第"+(localWave(state.wave)+1)+"波へ進む";
     }
         $("base-hp").textContent=state.hp+" / "+state.maxHp;
     $("credits").textContent=state.money+" G";
@@ -1443,32 +1760,33 @@
     $("awakening-count").textContent=(state.awakenings||0)+" / 3";
     $("awakening-clue").textContent=evo?
       (current.awakened?"覚醒済： "+current.evolution:
+      current.type!=="machinegun"?"★ "+(current.evolution||"専用兵器"):
       current.branch==="gatling"?"ヴァルカン：跳弾＋弾幕増幅で覚醒":
       current.branch==="rail"?"レールガン：超貫通＋過充電で覚醒":
       "テスラ：感電＋広域伝播で覚醒"):
-      "機関銃を進化させると覚醒レシピのヒントが表示される。";
+      "兵器を進化させると新たな戦い方を獲得！";
     $("upgrade-next").textContent=current?
       DEF[current.type].name+" Lv."+current.level+" → Lv."+(current.level+1):
       "機関銃 Lv.1 → Lv.3 二連装 → Lv.5 四連装";
     $("upgrade-detail").textContent=current&&current.branch?
-      ("進化形態： "+BRANCHES.find(b=>b.id===current.branch).name+
+      ("進化形態： "+(current.evolution||BRANCHES.find(b=>b.id===current.branch)?.name||"専用改造")+
        (current.awakened?" / ★覚醒済":" / 能力 "+current.mods.length+"/2")):
       current?
       (current.type==="machinegun"?"Lv.3で二連装、Lv.5で四連装！銃身と弾幕が増える":"強化で火力アップ、改造で特別な能力を獲得"):
       "兵器をタップすると次の成長を確認できます。";
     $("sound-button").textContent=soundOn?"♪":"×";
     $("wave-count").textContent=
-      String(Math.max(0,localWave(state.wave))).padStart(2,"0")+" / 05";
+      String(Math.max(0,localWave(state.wave))).padStart(2,"0")+" / 10";
     $("enemy-count").textContent="敵 "+(enemies.length+state.queue.length)+"体 ｜ 撃破 "+state.kills;
-    const profile=waveProfile(Math.min(20,state.wave+1));
-    const anyEvolution=towers.some(t=>t.type==="machinegun"?(!t.branch||t.mods.length<2):t.mods.length<3);
+    const profile=waveProfile(Math.min(stageEnd(),state.wave+1));
+    const anyEvolution=towers.some(t=>!t.branch||t.mods.length<2);
     const progress=anyEvolution?Math.min(100,Math.max(0,state.xp/state.xpNeed*100)):0;
     $("evolution-progress").style.width=progress+"%";
     $("evolution-meter-value").textContent=Math.floor(progress)+"%";
     $("evolution-meter-label").textContent=!anyEvolution&&towers.length?"全兵器の改造が完了！":state.choosing?"進化先を選択中":progress>=100?"進化準備完了！":"進化まであと "+Math.max(0,state.xpNeed-state.xp)+" XP";
     $("enemy-intel").textContent=state.active?
       "交戦中："+waveProfile(state.wave).label:
-      "第"+(state.wave+1)+"波： "+profile.label+" / 約"+(profile.unitCount+(profile.boss?1:0))+"体";
+      "次は第"+(localWave(state.wave)+1)+"波："+profile.label;
     const dispatch=storyAt(state.wave+1);
     const storyPreview=$("story-preview");
     if(storyPreview)storyPreview.textContent=state.active?
@@ -1480,7 +1798,7 @@
       storyLog.replaceChildren();
       STORY.filter(s=>s.wave<=state.wave).forEach(s=>{
         const entry=document.createElement("p");
-        entry.textContent="第"+s.wave+"波｜"+s.speaker+"「"+s.line+"」";
+        entry.textContent=s.code+"｜"+s.speaker+"「"+s.line+"」";
         storyLog.append(entry);
       });
       Object.keys(state.decisions).forEach(w=>{
@@ -1550,15 +1868,13 @@
         hoverPad>=0&&!towerAt(hoverPad)?padTrait(hoverPad).name+"："+padTrait(hoverPad).desc+"（"+padCost(selectedType,hoverPad)+"G）":
         localWave(state.wave)===0&&!towers.length?"① 光る＋に機関銃を置こう":
         localWave(state.wave)===0?"② 準備OK！ ▶ をタップ":
+        state.towerHintTime>0?ROLE_HINT[selectedType]:
         state.active?"交戦中！兵器をタップして強化・追加配置できる":
-        state.lastWaveReport||"次は第"+coming+"波："+advice;
+        state.lastWaveReport||"次は第"+(localWave(state.wave)+1)+"波："+advice;
     }
     $("tower-info").textContent=t?
-      DEF[t.type].name+" Lv."+t.level+
-      " ｜ 改造 "+t.mods.length+"/"+(t.type==="machinegun"?2:3)+
-      (t.evolution?" ｜ ★ "+t.evolution:"")+
-      (fusionFor(t)?" ｜ 連携："+fusionFor(t).info.name:""):
-      "配置可能なマスをタップしてください";
+      DEF[t.type].name+" Lv."+t.level+(t.evolution?" ★ "+t.evolution:""):
+      "光る＋をタップして兵器を設置";
   }
 
   const padFromPointer=event=>{
@@ -1607,6 +1923,7 @@
       selectedType=button.dataset.tower;
       selectedPad=-1;
       hoverPad=-1;
+      state.towerHintTime=3.5;
       updateUI();
     };
   });
@@ -1699,9 +2016,15 @@
       const path=s.path.map(p=>[(p[0]+35)/460*100,(p[1]-50)/420*100]);
       const line=path.map(([x,y],k)=>(k?"L":"M")+x.toFixed(0)+","+y.toFixed(0)).join(" ");
       const art=document.createElement("span");art.className="stage-map "+s.theme;
-      art.innerHTML='<svg viewBox="0 0 100 100" aria-hidden="true"><path d="'+line+'" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      const landmarks={
+        canyon:'<path d="M6 10L24 0L33 22L13 31Z M74 67L93 54L103 89L79 97Z" fill="#94ac80"/><path d="M15 29L27 7L36 22M76 91L89 62L101 89" stroke="#ebd5a7" fill="none" stroke-width="3"/>',
+        desert:'<path d="M0 25Q22 1 49 29T100 16V0H0ZM0 85Q25 56 54 76T102 70V100H0Z" fill="#dfb87d" opacity=".7"/><circle cx="83" cy="21" r="11" fill="#fff0b3"/>',
+        snow:'<path d="M0 32L19 2L34 21L47 0L66 32H100V0H0ZM36 100L70 59L85 79L99 60V100Z" fill="#d0f2f3"/><path d="M7 89l7-24 8 24M73 17l7-15 8 15" stroke="#ffffff" fill="none" stroke-width="3"/>',
+        factory:'<path d="M0 0H100V100H0Z" fill="#53646b"/><path d="M0 13H100M0 43H100M0 73H100M15 0V100M59 0V100" stroke="#aabac3" stroke-width="2" opacity=".5"/><circle cx="23" cy="82" r="15" fill="#263740" stroke="#fdc46e" stroke-width="4"/><path d="M85 0V100" stroke="#ff8a41" stroke-width="9"/>'
+      };
+      art.innerHTML='<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">'+landmarks[s.theme]+'<path d="'+line+'" fill="none" stroke="#182c2e" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/><path d="'+line+'" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
       const name=document.createElement("strong");name.textContent=(open?s.icon:"🔒")+" "+s.name;
-      const tag=document.createElement("small");tag.textContent=open?(i===stageIndex?"▶ 選択中":"5 WAVE"):"未解放";
+      const tag=document.createElement("small");tag.textContent=open?(i===stageIndex?"▶ 選択中":"10 WAVE"):"未解放";
       button.append(art,name,tag);
       button.onclick=()=>selectStage(i);
       stageBox.append(button);
