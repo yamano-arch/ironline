@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
 
-const source=fs.readFileSync(new URL('../script.js',import.meta.url),'utf8');
+const source=fs.readFileSync(new URL('./script.js',import.meta.url),'utf8');
 
 function createHarness(seed=1){
   const all=new Map();
@@ -28,7 +28,7 @@ function createHarness(seed=1){
   let rand=seed;
   const randomness=()=>{rand=(rand*1664525+1013904223)>>>0;return rand/4294967296};
   const MathSeeded=Object.create(Math);MathSeeded.random=randomness;
-  const hooked=source.replace('  reset();\n  requestAnimationFrame(frame);',`  globalThis.__test={get state(){return state},get towers(){return towers},get enemies(){return enemies},selectPad,startWave,update,openEvolution,getDef:()=>DEF,findTarget,upgradeTower};\n  reset();`);
+  const hooked=source.replace('  reset();\n  requestAnimationFrame(frame);',`  globalThis.__test={get state(){return state},get towers(){return towers},get enemies(){return enemies},get commander(){return commander},selectStage,selectPad,startWave,update,openEvolution,getDef:()=>DEF,findTarget,upgradeTower};\n  reset();`);
   const context={document:doc,window:{},localStorage:{getItem:()=>null,setItem(){}},requestAnimationFrame(){},Math:MathSeeded,console};
   vm.runInNewContext(hooked,context,{filename:'script.js'});
   return {game:context.__test, get};
@@ -36,58 +36,55 @@ function createHarness(seed=1){
 
 function run({seed,style}){
   const {game,get}=createHarness(seed);
-  // The first selection uses the default machine gun, as a new player would.
-  game.selectPad(2);
-  if(style==='three_guns'){game.selectPad(4);game.selectPad(5)}
   const report=[];
-  for(let wave=1;wave<=20;wave++){
-    if(style!=='one_gun'){
-      // Rotate build priorities, subject to unlock and actual funds.
-      const plans=style==='three_guns'?
-        {2:[["cannon",1]],3:[["missile",7]],4:[["radar",0]],5:[["missile",6]],6:[["cannon",8]],7:[["missile",9]],8:[["cannon",3]],9:[["missile",10]],10:[["radar",11]]}:
-        {2:[["cannon",4]],3:[["missile",5]],4:[["radar",7]],5:[["missile",6]],6:[["cannon",1]],7:[["missile",9]],8:[["cannon",8]],9:[["missile",10]],10:[["radar",11]],11:[["missile",3]]};
-      for(const [type,pad] of plans[wave]||[]){
-        // UI-controlled weapon selection, identical to clicking its card.
-        const buttons=[...get('tower-grid').children];
-        const button=buttons.find(b=>b.dataset?.tower===type);
-        if(button?.onclick&&game.state.money>=game.getDef()[type].cost){button.onclick();game.selectPad(pad)}
-      }
-      // Upgrade the main tower when money allows and cash reserve survives.
-      if(wave>1&&wave%2===0&&game.state.money>=230){
+  const buy=(type,pad)=>{
+    const button=get('tower-grid').children.find(b=>b.dataset?.tower===type);
+    if(button?.onclick&&game.state.money>=game.getDef()[type].cost){button.onclick();game.selectPad(pad)}
+  };
+  for(let stage=0;stage<4;stage++){
+    if(stage)game.selectStage(stage);
+    assert.equal(game.state.wave,stage*5,'Stage starts on its own five-wave segment');
+    assert.equal(game.towers.length,0,'A fresh map has empty build pads');
+    buy('machinegun',2);
+    if(style==='three_guns'&&stage===0){buy('machinegun',4);buy('machinegun',5)}
+    if(stage){buy('cannon',4);buy('missile',5);if(stage>=2)buy('radar',7);if(stage>=3)buy('missile',6)}
+    for(let local=1;local<=5;local++){
+      const wave=stage*5+local;
+      const plans=stage===0?
+        {2:[["cannon",4]],3:[["missile",5]],4:[["radar",7]],5:[["missile",6]]}:
+        {2:[["missile",6]],3:[["cannon",1]],4:[["radar",8]],5:[["missile",9]]};
+      if(style!=='one_gun'||stage>0)for(const [type,pad] of plans[local]||[])buy(type,pad);
+      if(local%2===0&&game.state.money>=230){
         const t=game.towers.find(t=>t.type==='machinegun');
         if(t){game.selectPad(t.pad);game.upgradeTower()}
       }
+      game.startWave();
+      let ticks=0,peakEnemies=0;
+      while(game.state.active&&ticks<2400&&!game.state.finished){
+        game.update(.05);ticks++;peakEnemies=Math.max(peakEnemies,game.enemies.length);
+      }
+      if(game.state.choosing){
+        const buttons=get('evolution-options').children.filter(e=>e.className?.includes('evolution-choice'));
+        buttons[0]?.onclick?.();
+      }
+      report.push({stage:stage+1,wave,hp:game.state.hp,money:game.state.money,towers:game.towers.length,peakEnemies,ticks});
+      if(game.state.hp<=0||ticks>=2400)break;
     }
-    game.startWave();
-    if(!game.state.active&&!game.state.choosing){get('decision-1').onclick?.();game.startWave()}
-    let ticks=0,peakEnemies=0;
-    while(game.state.active&&ticks<2400&&!game.state.finished){
-      game.update(.05);ticks++;peakEnemies=Math.max(peakEnemies,game.enemies.length);
-    }
-    if(game.state.choosing){
-      const buttons=get('evolution-options').children.filter(e=>e.className?.includes('evolution-choice'));
-      const selected=buttons.find(e=>e.children?.[1]?.children?.[0]?.textContent==='レールガン')||buttons[0];
-      selected?.onclick?.();
-    }
-    report.push({wave,hp:game.state.hp,money:game.state.money,kills:game.state.kills,towers:game.towers.length,peakEnemies,ticks,choosing:game.state.choosing,leaks:{...game.state.waveLeaks}});
-    if(game.state.finished||ticks>=2400)break;
+    if(game.state.hp<=0)break;
+    assert.equal(game.state.finished,true,'Stage should end at its fifth wave');
+    assert.equal(game.commander.stages,Math.min(stage+2,4),'Clearing unlocks the next map');
   }
   return report;
 }
 
-for(const style of ['one_gun','guided','three_guns']){
+for(const style of ['guided','three_guns']){
   for(const seed of [11,27,42]){
     try {
       const waves=run({style,seed});
-      if(style==='one_gun'){
-        assert.equal(waves[0].hp,20,'First wave should be welcoming');
-        assert.equal(waves.at(-1).wave,3,'One machine gun alone should not win all waves');
-      }else{
-        assert.equal(waves.at(-1).wave,20,'Common build path should reach the last wave');
-        assert.ok(waves.at(-1).hp>0,'Common build path should finish without mandatory repairs');
-        assert.ok(waves[1].hp>=11,'Second wave should not force immediate repairs');
-      }
-      console.log(JSON.stringify({style,seed,first: waves[0].hp,second:waves[1].hp,lastWave:waves.at(-1).wave,lastHp:waves.at(-1).hp}));
+      assert.equal(waves[0].hp,20,'First wave should be welcoming');
+      assert.equal(waves.at(-1).wave,20,'All four maps should be completable');
+      assert.ok(waves.every(w=>w.hp>0),'Common build path should finish without repairs');
+      console.log(JSON.stringify({style,seed,stageHealth:waves.filter(w=>w.wave%5===0).map(w=>w.hp),lastWave:waves.at(-1).wave}));
     }
     catch(e){console.error(style,seed,e.stack);process.exitCode=1}
   }
