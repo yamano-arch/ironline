@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0c161c">
-  <title>IRONLINE — 4つの戦場</title>
-  <link rel="stylesheet" href="./style.css?v=3.0.0">
+  <title>IRONLINE — 戦場と兵器</title>
+  <link rel="stylesheet" href="./style.css?v=3.1.0">
 </head>
 <body>
 <div id="ironline" class="game-shell">
@@ -13,7 +13,7 @@
     <div class="brand">
       <span class="brand-mark">◆</span>
       <span>IRONLINE</span>
-      <span class="version">ALPHA 3.0.0</span>
+      <span class="version">ALPHA 3.1.0</span>
       <span class="stage-caption" id="stage-caption">⛰ 渓谷防衛線</span>
     </div>
 
@@ -41,7 +41,7 @@
       <div class="status-item wave">
         <div>
           <small>敵の襲撃</small>
-          <strong id="wave-count">00 / 05</strong>
+          <strong id="wave-count">00 / 10</strong>
         </div>
       </div>
     </div>
@@ -80,27 +80,33 @@
     <div class="guide-banner" id="guide-banner"><strong>MISSION 01：はじめての防衛</strong><span id="guide-text">① 光るマスをタップして機関銃を配置しよう！</span></div>
     <div class="tower-grid">
       <button class="tower-card selected" data-tower="machinegun" type="button">
-        <span class="tower-symbol machinegun-symbol">銃</span>
+        <span class="tower-symbol machinegun-symbol"><svg viewBox="0 0 38 32" aria-hidden="true"><path d="M7 24h24v4H7zM10 19h18v6H10zM16 7h5v13h-5zM8 4h4v17H8zM26 4h4v17h-4z" fill="currentColor"/><path d="M9 3h3m15 0h3m-13 2h4" stroke="#172d30" stroke-width="2"/></svg></span>
         <span class="tower-name">機関銃</span>
-        <span class="tower-price">100 G</span><span class="tower-desc">歩兵に強い・高速連射</span>
+        <span class="tower-price">100 G</span><span class="tower-desc">👣 歩兵</span>
       </button>
 
       <button class="tower-card" data-tower="cannon" type="button">
-        <span class="tower-symbol cannon-symbol">砲</span>
+        <span class="tower-symbol cannon-symbol"><svg viewBox="0 0 38 32" aria-hidden="true"><path d="M9 24h20v5H9zM7 19l6-8 16 3-2 10H9z" fill="currentColor"/><path d="M14 15L28 3l4 4-13 13" fill="#f5e8cb"/><circle cx="18" cy="24" r="4" fill="#324039"/></svg></span>
         <span class="tower-name">榴弾砲</span>
-        <span class="tower-price">180 G</span><span class="tower-desc">範囲爆発・集団に強い</span>
+        <span class="tower-price">170 G</span><span class="tower-desc">💥 集団</span>
+      </button>
+
+      <button class="tower-card" data-tower="flak" type="button">
+        <span class="tower-symbol flak-symbol"><svg viewBox="0 0 38 32" aria-hidden="true"><path d="M7 23h24v6H7zM10 17h18v9H10z" fill="currentColor"/><path d="M12 4h5v16h-5zM22 4h5v16h-5z" fill="#aaf4ff"/><path d="M9 7h11m0 5H9m11-5h10m0 5H20" stroke="#24647a" stroke-width="2"/></svg></span>
+        <span class="tower-name">対空砲</span>
+        <span class="tower-price">195 G</span><span class="tower-desc">🚁 ドローン</span>
       </button>
 
       <button class="tower-card" data-tower="missile" type="button">
-        <span class="tower-symbol missile-symbol">弾</span>
+        <span class="tower-symbol missile-symbol"><svg viewBox="0 0 38 32" aria-hidden="true"><path d="M4 21h30v7H4z" fill="#304844"/><path d="M7 10l4-8 4 8v16H7zM17 10l4-8 4 8v16h-8zM27 10l4-8 4 8v16h-8z" fill="currentColor"/><path d="M7 11h8m2 0h8m2 0h8" stroke="#f1a55d" stroke-width="2"/></svg></span>
         <span class="tower-name">ミサイル</span>
-        <span class="tower-price">250 G</span><span class="tower-desc">高威力・戦車に強い</span>
+        <span class="tower-price">250 G</span><span class="tower-desc">🛡 装甲</span>
       </button>
 
       <button class="tower-card" data-tower="radar" type="button">
-        <span class="tower-symbol radar-symbol">電</span>
+        <span class="tower-symbol radar-symbol"><svg viewBox="0 0 38 32" aria-hidden="true"><path d="M16 15h6v14h-6zM7 28h24v3H7z" fill="currentColor"/><path d="M4 6q14 21 30 0M9 9q9 12 20 0" stroke="#a6faff" stroke-width="4" stroke-linecap="round" fill="none"/><circle cx="19" cy="14" r="4" fill="#d9ffff"/></svg></span>
         <span class="tower-name">電子戦</span>
-        <span class="tower-price">200 G</span><span class="tower-desc">敵を遅くする支援兵器</span>
+        <span class="tower-price">175 G</span><span class="tower-desc">⚡ 足止め</span>
       </button>
     </div>
 
@@ -172,7 +178,7 @@
       <div class="lab-bank"><span>◆ 研究データ</span><strong id="lab-points">0</strong><small id="lab-best">最高到達 —</small></div>
       <div class="lab-tabs"><button id="lab-tab-stages" class="active" type="button">🗺 戦場を選ぶ</button><button id="lab-tab-research" type="button">⚙ 研究する</button></div>
       <section id="lab-stage-view" class="lab-view active">
-        <div class="lab-section-label">戦場　<small>各5波でクリア</small></div>
+        <div class="lab-section-label">戦場　<small>各10波でクリア</small></div>
         <div id="stage-grid" class="stage-grid"></div>
         <div class="lab-section-label">出撃スタイル</div>
         <div id="lab-doctrines" class="lab-doctrines"></div>
@@ -190,7 +196,7 @@
 </div>
 
 
-<script src="./script.js?v=3.0.0" defer></script>
+<script src="./script.js?v=3.1.0" defer></script>
 </body>
 </html>
 
