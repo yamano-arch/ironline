@@ -158,7 +158,7 @@
   function guide(){
     const n=$("guide-text");if(!n)return;
     n.textContent=state.wave===0&&!towers.length?"① 光るマスをタップして機関銃を配置しよう！":
-      state.wave===0?"② 配置できた！ WAVE 1 を開始してみよう":
+      state.wave===0?"② 配置できた！ 第1波を開始してみよう":
       state.wave===1&&state.active?"③ 銃身が回転して敵を撃破！":
       state.wave===1?"④ 榴弾砲が解放！範囲攻撃を試してみよう":"兵器を強化して次の敵部隊に備えよう！";
   }
@@ -169,13 +169,13 @@
     {id:"ammunition",tier:"FIREPOWER",name:"💥 強化弾頭",desc:"全兵器の攻撃力 +25%。以後の設置にも適用。",apply:()=>{state.globalPower*=1.25;towers.forEach(t=>t.power*=1.25)}},
     {id:"radial",tier:"TACTICAL",name:"🎯 精密レーダー",desc:"全兵器の射程 +17%。以後の設置にも適用。",apply:()=>{state.globalRange*=1.17;towers.forEach(t=>t.range*=1.17)}},
     {id:"salvage",tier:"ECONOMY",name:"⚙ 戦場回収班",desc:"敵撃破報酬 +35%。撃破するほど資金が増える。",apply:()=>state.rewardRate*=1.35},
-    {id:"bunker",tier:"DEFENSE",name:"🛡 緊急防壁",desc:"基地HPを5回復し、最大HPも2増加。",apply:()=>{state.maxHp+=2;state.hp=Math.min(state.maxHp,state.hp+5)}},
+    {id:"bunker",tier:"DEFENSE",name:"🛡 緊急防壁",desc:"基地の体力を5回復し、最大体力も2増加。",apply:()=>{state.maxHp+=2;state.hp=Math.min(state.maxHp,state.hp+5)}},
     {id:"airforce",tier:"SUPPORT",name:"✈ 航空優勢",desc:"爆撃ゲージ +50%。爆撃の威力も +25%。",apply:()=>{state.strike=Math.min(100,state.strike+50);state.strikePower*=1.25}},
     {id:"armor",tier:"ANTI-ARMOR",name:"🔩 対装甲弾",desc:"全兵器に装甲貫通 +20%。戦車の突破を防ぐ。",apply:()=>{state.globalPierce+=.2;towers.forEach(t=>t.pierce+=.2)}},
-    {id:"bounty",tier:"ECONOMY",name:"💎 高額賞金作戦",desc:"このWAVEの敵HP +25%、撃破報酬2倍。危険を資金に変える。",apply:()=>{state.wavePlan="bounty"}},
+    {id:"bounty",tier:"ECONOMY",name:"💎 高額賞金作戦",desc:"次の敵の体力が25%増える代わりに、撃破報酬2倍。",apply:()=>{state.wavePlan="bounty"}},
     {id:"mines",tier:"DEFENSE",name:"💣 峡谷地雷網",desc:"先頭6体に地雷が炸裂。開幕の突破を先に止める。",apply:()=>{state.wavePlan="mines"}},
     {id:"barrage",tier:"FIREPOWER",name:"🚀 開幕ロケット斉射",desc:"先頭6体へ迎撃ロケット。HPを削ってから射線に入れる。",apply:()=>{state.wavePlan="barrage"}},
-    {id:"emp",tier:"SUPPORT",name:"⚡ 広域EMP妨害",desc:"先頭8体を長時間鈍足化。高速部隊への切り札。",apply:()=>{state.wavePlan="emp"}}
+    {id:"emp",tier:"SUPPORT",name:"⚡ 広域電波妨害",desc:"先頭8体を長時間鈍足化。高速部隊への切り札。",apply:()=>{state.wavePlan="emp"}}
   ];
 
   function reset() {
@@ -346,7 +346,7 @@
   function tacticalDraft(n) {
     state.choosing=true;
     state.paused=true;
-    $("draft-wave").textContent=String(n).padStart(2,"0");
+    $("draft-wave").textContent=String(n);
     const p=waveProfile(n);
     $("draft-intel").textContent=p.label+" / 推定"+(p.unitCount+(p.boss?1:0))+"体。次の部隊に合わせて「資金・火力・支援」から作戦を選ぼう。";
     const holder=$("draft-options");
@@ -366,9 +366,10 @@
       const button=document.createElement("button");
       button.type="button";button.className="draft-option";
       const type=document.createElement("small"),head=document.createElement("strong"),desc=document.createElement("span");
-      type.textContent=card.tier;head.textContent=card.name;desc.textContent=card.desc;
+      const categoryNames={ECONOMY:"資金・報酬",FIREPOWER:"攻撃力",DEFENSE:"基地防衛",TACTICAL:"射程・作戦",SUPPORT:"援護", "ANTI-ARMOR":"戦車対策"};
+      type.textContent=categoryNames[card.tier]||"支援";head.textContent=card.name;desc.textContent=card.desc;
       const impact=document.createElement("em");impact.className="draft-impact";
-      impact.textContent=card.id==="bounty"?"⚠ このWAVE限定 / 高リスク高報酬":card.id==="mines"?"💣 このWAVE限定 / 開幕地雷":card.id==="barrage"?"🚀 このWAVE限定 / ロケット迎撃":card.id==="emp"?"⚡ このWAVE限定 / 行動妨害":card.tier==="ECONOMY"?"✓ 永続 / 資金確保":card.tier==="DEFENSE"?"✓ 永続 / 基地防衛":card.tier==="FIREPOWER"?"✓ 永続 / 火力強化":card.tier==="ANTI-ARMOR"?"✓ 永続 / 装甲対策":card.tier==="TACTICAL"?"✓ 永続 / 射程強化":"✓ 永続 / 爆撃強化";
+      impact.textContent=card.id==="bounty"?"⚠ 次の戦いだけ / 高リスク高報酬":card.id==="mines"?"💣 次の戦いだけ / 開幕地雷":card.id==="barrage"?"🚀 次の戦いだけ / ロケット迎撃":card.id==="emp"?"⚡ 次の戦いだけ / 行動妨害":card.tier==="ECONOMY"?"✓ 作戦中ずっと / 資金確保":card.tier==="DEFENSE"?"✓ 作戦中ずっと / 基地防衛":card.tier==="FIREPOWER"?"✓ 作戦中ずっと / 火力強化":card.tier==="ANTI-ARMOR"?"✓ 作戦中ずっと / 装甲対策":card.tier==="TACTICAL"?"✓ 作戦中ずっと / 射程強化":"✓ 作戦中ずっと / 爆撃強化";
       button.append(type,head,desc,impact);
       button.onclick=()=>{
         card.apply();state.operationName=card.name;state.usedTactics.push(card.name.replace(/^[^ ]+ /,""));
@@ -389,9 +390,9 @@
     state.spawnedThisWave=0;
     state.spawnTimer=.16;state.paused=false;
     const dispatch=storyAt(n);
-    notice(dispatch?"📡 "+dispatch.speaker+"："+dispatch.line:"WAVE "+n+" — "+waveProfile(n).label);
+    notice(dispatch?"📡 "+dispatch.speaker+"："+dispatch.line:"第"+n+"波 — "+waveProfile(n).label);
     missionBanner=2.25;screenFlash=.17;
-    $("wave-alert").textContent="WAVE "+String(n).padStart(2,"0")+" // "+waveProfile(n).label;
+    $("wave-alert").textContent="第"+n+"波："+waveProfile(n).label;
     $("wave-alert").classList.remove("hidden");
   }
   function startWave() {
@@ -860,7 +861,7 @@
           $("evolution-modal").classList.add("hidden");
           if(!t.awakened)notice((branchChoice?"進化完了：":"能力獲得：")+m.name);
           if(!state.active){
-            notice("進化完了！ 下の ▶ WAVE "+(state.wave+1)+" 開始で進もう");
+            notice("進化完了！ 下の ▶ 第"+(state.wave+1)+"波 開始で進もう");
             // One-screen UI: no programmatic page scrolling.
           }
           updateUI();
@@ -887,7 +888,7 @@
     $("result-modal").classList.remove("hidden");
     $("result-icon").textContent=win?"★":"✕";
     $("result-title").textContent=win?
-      "MISSION COMPLETE":"MISSION FAILED";
+      "防衛成功！":"防衛失敗";
     $("result-description").textContent=win?
       (state.convoySafety>=2?"避難列車は無事に脱出！":"防衛線は守ったが、列車には犠牲が出た。")+
       (state.intelScore?" 友軍信号の真相へ一歩近づいた。":" 旧施設の真相は封印された。"):
@@ -895,7 +896,7 @@
 
     const stars=state.hp===state.maxHp?3:state.hp>=11?2:1;
     $("result-stats").textContent=
-      "到達 WAVE "+state.wave+
+      "到達 第"+state.wave+"波"+
       " / 20 ｜ 撃破 "+state.kills+" ｜ エリート撃破 "+state.eliteKills+
       " ｜ 獲得戦術 "+state.usedTactics.length+
       " ｜ 避難評価："+Math.max(0,state.convoySafety)+
@@ -915,7 +916,7 @@
     if(state.noteTime>0){
       state.noteTime-=dt;
       if(state.noteTime<=0)
-        $("battle-message").textContent=state.active?"防衛作戦進行中":"WAVE "+state.wave+" クリア！ 次の作戦へ";
+        $("battle-message").textContent=state.active?"防衛作戦進行中":"第"+state.wave+"波 突破！ 次の作戦へ";
     }
 
     if(!state.active)return;
@@ -968,7 +969,7 @@
       const newly=state.wave===1?"cannon":state.wave===2?"missile":state.wave===3?"radar":null;
       if(newly){notice("🎉 "+DEF[newly].name+" 解放！");sfx("unlock");
         const card=document.querySelector('[data-tower="'+newly+'"]');if(card)card.classList.add("unlocked");
-      }else notice("WAVE "+state.wave+" 突破！");
+      }else notice("第"+state.wave+"波 突破！");
       if(state.wave>=20){
         finish(true);return;
       }
@@ -1070,7 +1071,7 @@
     ctx.fillStyle=v;ctx.fillRect(0,0,W,H);
     // Strategic markers.
     ctx.fillStyle="#e1efca80";ctx.font="bold 9px Rajdhani,sans-serif";ctx.textAlign="left";
-    ctx.fillText("SECTOR A-01",15,18);ctx.fillText("GRID 39°N",305,H-14);
+    // 地図の飾り英字は意味のない読解負荷になるため表示しない。
   }
   function drawPads() {
     PADS.forEach(([x,y],i)=>{
@@ -1329,8 +1330,8 @@
     rounded(345,125,36,48,4,"#4c8884");
     rounded(351,115,23,19,3,"#274647");
     ctx.strokeStyle="#90f5de";ctx.lineWidth=2;ctx.strokeRect(345,125,36,48);
-    ctx.fillStyle="#e4fff0";ctx.font="bold 10px Rajdhani,sans-serif";
-    ctx.textAlign="center";ctx.fillText("HQ",364,155);
+    ctx.fillStyle="#e4fff0";ctx.font="bold 10px 'Noto Sans JP',sans-serif";
+    ctx.textAlign="center";ctx.fillText("基地",364,155);
     ctx.fillStyle="#b2ffe2";ctx.fillRect(353,163,22,3);
     ctx.restore();
     if(screenFlash>0){ctx.save();ctx.globalAlpha=Math.min(.45,screenFlash*.4);ctx.fillStyle="#fff7da";ctx.fillRect(0,0,W,H);ctx.restore();}
@@ -1347,7 +1348,7 @@
     if(nextButton){
       const showNext=state.wave>0&&!state.active&&!state.choosing&&!state.finished;
       nextButton.classList.toggle("hidden",!showNext);
-      if(showNext)nextButton.textContent="▶ WAVE "+(state.wave+1)+" の作戦へ  /  タップして進む";
+      if(showNext)nextButton.textContent="▶ 第"+(state.wave+1)+"波へ進む";
     }
         $("base-hp").textContent=state.hp+" / "+state.maxHp;
     $("credits").textContent=state.money+" G";
@@ -1355,7 +1356,7 @@
     document.querySelectorAll(".tower-card").forEach(card=>{
       const available=unlocked(card.dataset.tower);
       card.classList.toggle("locked",!available);
-      card.dataset.unlock="🔒 WAVE "+unlockAt[card.dataset.tower]+" で解放";
+      card.dataset.unlock="🔒 第"+unlockAt[card.dataset.tower]+"波で解放";
       card.disabled=!available;
     });
     const current=towerAt(selectedPad);
@@ -1388,7 +1389,7 @@
     $("evolution-meter-label").textContent=!anyEvolution&&towers.length?"全兵器の改造が完了！":state.choosing?"進化先を選択中":progress>=100?"進化準備完了！":"進化まであと "+Math.max(0,state.xpNeed-state.xp)+" XP";
     $("enemy-intel").textContent=state.active?
       "交戦中："+waveProfile(state.wave).label:
-      "WAVE "+(state.wave+1)+"： "+profile.label+" / 約"+(profile.unitCount+(profile.boss?1:0))+"体";
+      "第"+(state.wave+1)+"波： "+profile.label+" / 約"+(profile.unitCount+(profile.boss?1:0))+"体";
     const dispatch=storyAt(state.wave+1);
     const storyPreview=$("story-preview");
     if(storyPreview)storyPreview.textContent=state.active?
@@ -1400,11 +1401,11 @@
       storyLog.replaceChildren();
       STORY.filter(s=>s.wave<=state.wave).forEach(s=>{
         const entry=document.createElement("p");
-        entry.textContent="WAVE "+String(s.wave).padStart(2,"0")+"｜"+s.speaker+"「"+s.line+"」";
+        entry.textContent="第"+s.wave+"波｜"+s.speaker+"「"+s.line+"」";
         storyLog.append(entry);
       });
       Object.keys(state.decisions).forEach(w=>{
-        const entry=document.createElement("p");entry.textContent="決断 WAVE "+w+"｜"+state.decisions[w];storyLog.append(entry);
+        const entry=document.createElement("p");entry.textContent="第"+w+"波の決断｜"+state.decisions[w];storyLog.append(entry);
       });
       if(!state.wave){const entry=document.createElement("p");entry.textContent="記録は出撃後に解放されます。";storyLog.append(entry);}
     }
@@ -1426,7 +1427,7 @@
     $("start-wave").classList.toggle("next-action",!state.active&&state.wave===0&&towers.length>0);
     $("start-wave").textContent=state.active?"迎撃中":
       state.finished?"作戦終了":
-      "▶ WAVE "+(state.wave+1)+" 開始";
+      "▶ 第"+(state.wave+1)+"波 開始";
     const decisionPanel=$("decision-panel");
     if(decisionPanel){
       const n=pendingDecision();
@@ -1472,10 +1473,10 @@
       dockStatus.textContent=state.choosing?"兵器進化を選択中":
         hoverPad>=0&&!towerAt(hoverPad)?padTrait(hoverPad).name+"："+padTrait(hoverPad).desc+"（"+padCost(selectedType,hoverPad)+"G）":
         state.wave===0&&!towers.length?"① 『まずはここ！』の＋をタップして機関銃を置こう":
-        state.wave===0?"② 準備OK！下の『WAVE 1 開始』を押そう":
+        state.wave===0?"② 準備OK！下の『第1波 開始』を押そう":
         selectedLink?"⚡ "+selectedLink.info.name+"！兵器が協力して攻撃中":
         state.active?"敵を迎撃中！兵器をタップすると強化できる":
-        "次はWAVE "+coming+"："+advice;
+        "次は第"+coming+"波："+advice;
     }
     $("tower-info").textContent=t?
       DEF[t.type].name+" Lv."+t.level+
@@ -1590,14 +1591,14 @@
   };
 
   function openLab(fromResult){
-    if(state.active||state.choosing){notice("司令部はWAVE間に利用できます");return;}
+    if(state.active||state.choosing){notice("司令部は戦闘と戦闘の間に利用できます");return;}
     labOpenedFromResult=fromResult;
     renderLab();
     $("lab-modal").classList.remove("hidden");
   }
   function renderLab(){
     $("lab-points").textContent=commander.points+" ◆";
-    $("lab-best").textContent="最高 WAVE "+commander.best+" / 挑戦 "+commander.runs+"回";
+    $("lab-best").textContent="最高到達 第"+commander.best+"波 / 挑戦 "+commander.runs+"回";
     const locked=state.wave>0&&!state.finished;
     const doctrineBox=$("lab-doctrines");doctrineBox.replaceChildren();
     DOCTRINES.forEach(d=>{
