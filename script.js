@@ -763,6 +763,25 @@
     }
     burst(b.x,b.y,b.type==="missile"?"#ff964c":b.type==="flak"?"#76eaff":"#ffcf79",
       b.type==="machinegun"?4:18);
+    if(b.source.branch==="cluster"){
+      // Shell separates into satellite blasts; obvious area-denial identity.
+      const petals=b.source.awakened?6:3;
+      for(let i=0;i<petals;i++){
+        const a=i*Math.PI*2/petals+ambientTime*.4;
+        const px=b.x+Math.cos(a)*29,py=b.y+Math.sin(a)*29;
+        burst(px,py,"#ffdb83",b.source.awakened?11:7);
+        shockwaves.push({x:px,y:py,r:3,max:b.source.awakened?31:23,life:.28,color:"#ffd174"});
+        enemies.forEach(e=>{if(e.alive&&Math.hypot(e.x-px,e.y-py)<(b.source.awakened?31:23))hurt(e,b.damage*.13,b.source)});
+      }
+    }
+    if(b.source.branch==="bunker"&&target&&(target.kind==="tank"||target.kind==="boss")){
+      shockwaves.push({x:b.x,y:b.y,r:6,max:b.source.awakened?65:38,life:.44,color:"#ffcf8b"});
+      combatTexts.push({x:b.x,y:b.y-21,text:"装甲破壊",life:.75,color:"#ffe1a4"});
+    }
+    if(b.source.branch==="swarm"&&b.source.awakened){
+      burst(b.x,b.y,"#ffe28f",12);
+      shockwaves.push({x:b.x,y:b.y,r:4,max:28,life:.24,color:"#ffe28f"});
+    }
 
     if(target && target.alive)hurt(target,b.damage,b.special==="hunter"?{...b.source,type:"missile"}:b.source);
 
@@ -957,21 +976,30 @@
       if(t.branch==="gatling"&&has("ricochet","barrage"))awakening="インフィニティ・ヴァルカン";
       if(t.branch==="rail"&&has("penetrate","overcharge"))awakening="ゼロ・ディスタンス";
       if(t.branch==="tesla"&&has("conduction","spread"))awakening="サンダーゴッド";
-      if(awakening&&!t.awakened){
-        t.awakened=true;state.awakenings=(state.awakenings||0)+1;t.evolution=awakening;t.power*=1.5;t.interval*=.65;
-        kick=8;sfx("unlock");
-        for(let n=0;n<8;n++)burst(t.x,t.y,n%2?"#ffe5a0":"#7deeff",35);
-        strikeRings.push({x:t.x,y:t.y,radius:2,life:1});
-        shockwaves.push({x:t.x,y:t.y,r:8,max:W*.8,life:1.4,color:t.branch==="rail"?"#74eaff":t.branch==="tesla"?"#a99aff":"#ffcc63"});
-        screenFlash=.95;
-        combatTexts.push({x:t.x,y:t.y-49,text:"LEGENDARY AWAKENING!",life:2.8,color:"#ffe489"});
-        notice("★ LEGENDARY AWAKENING： "+awakening+"！");
-      }
+      if(awakening)awakenWeapon(t,awakening,t.branch==="rail"?"#74eaff":t.branch==="tesla"?"#a99aff":"#ffcc63");
       return;
     }
-    if(t.type==="cannon"&&t.mods.includes("blast")&&t.mods.includes("power")&&!t.evolution){
-      t.evolution="クラスター・デストロイヤー";t.blast+=33;t.power*=1.35;
-    }
+    // Other classes have their own obtainable two-part awakening recipes.
+    if(t.type==="cannon"&&t.branch==="cluster"&&t.mods.includes("blast")&&t.mods.includes("power"))
+      awakenWeapon(t,"メテオ・クラスター","#ffd174");
+    if(t.type==="cannon"&&t.branch==="incendiary"&&t.mods.includes("blast")&&t.mods.includes("rapid"))
+      awakenWeapon(t,"インフェルノ砲","#ff8e5f");
+    if(t.type==="missile"&&t.branch==="bunker"&&t.mods.includes("pierce")&&t.mods.includes("power"))
+      awakenWeapon(t,"タイタン・ブレイカー","#ffad66");
+    if(t.type==="missile"&&t.branch==="swarm"&&t.mods.includes("rapid")&&t.mods.includes("blast"))
+      awakenWeapon(t,"ハイドラ・スウォーム","#ffe08b");
+  }
+  function awakenWeapon(t,name,color){
+    if(t.awakened)return;
+    t.awakened=true;state.awakenings=(state.awakenings||0)+1;
+    t.evolution=name;t.power*=1.28;t.interval*=.80;t.glow=1.4;
+    kick=8;sfx("unlock");
+    for(let n=0;n<8;n++)burst(t.x,t.y,n%2?"#ffe5a0":color,30);
+    strikeRings.push({x:t.x,y:t.y,radius:2,life:1});
+    shockwaves.push({x:t.x,y:t.y,r:8,max:W*.8,life:1.4,color});
+    screenFlash=.75;
+    combatTexts.push({x:t.x,y:t.y-49,text:"★ 覚醒！",life:2.2,color});
+    notice("★ 覚醒："+name+"！");
   }
   function evolutionChoices(t) {
     if(t.type==="machinegun"&&t.branch){
@@ -1044,7 +1072,7 @@
         if(branchChoice&&t.type==="machinegun"){const role=document.createElement("small");role.className="choice-role";role.textContent=m.id==="gatling"?"歩兵に特化":m.id==="rail"?"重戦車に特化":"連鎖と減速に特化";desc.afterRole=role;}
         wrap.append(strong,desc);if(desc.afterRole)wrap.append(desc.afterRole);
         if(m.tag){const tag=document.createElement("small");tag.textContent=m.tag;wrap.append(tag);}
-        if(!branchChoice&&t.branch){const goal=document.createElement("small");goal.className="recipe-hint";goal.textContent=(t.branch==="gatling"&&["ricochet","barrage"].includes(m.id)||t.branch==="rail"&&["penetrate","overcharge"].includes(m.id)||t.branch==="tesla"&&["conduction","spread"].includes(m.id))?"★ 覚醒レシピの必須パーツ":"別系統のカスタマイズ";wrap.append(goal);}
+        if(!branchChoice&&t.branch){const goal=document.createElement("small");goal.className="recipe-hint";goal.textContent=(t.branch==="gatling"&&["ricochet","barrage"].includes(m.id)||t.branch==="rail"&&["penetrate","overcharge"].includes(m.id)||t.branch==="tesla"&&["conduction","spread"].includes(m.id)||t.branch==="cluster"&&["blast","power"].includes(m.id)||t.branch==="incendiary"&&["blast","rapid"].includes(m.id)||t.branch==="bunker"&&["pierce","power"].includes(m.id)||t.branch==="swarm"&&["rapid","blast"].includes(m.id))?"★ 覚醒パーツ":"別の強化";wrap.append(goal);}
         button.append(symbol,wrap);
         button.onclick=()=>{
           if(branchChoice){
@@ -1502,11 +1530,62 @@
     circle(x,y,r+2,"#122932");circle(x,y,r,color);
     circle(x-r*.24,y-r*.27,r*.36,"#fffef2");ctx.restore();
   }
+  function drawWeaponEvolution(t,size){
+    if(!t.branch)return;
+    const glow=t.awakened?"#ffe49a":t.branch==="tesla"||t.branch==="empfield"?"#c5a7ff":t.type==="flak"?"#9befff":t.type==="cannon"?"#ffb978":t.type==="missile"?"#ffce79":"#83eeff";
+    ctx.save();
+    ctx.shadowColor=glow;ctx.shadowBlur=t.awakened?14:8;
+    const flank=size*.39;
+    if(t.branch==="gatling"){
+      // Spinning muzzle ring and twin ammo feeder drums.
+      for(const side of [-1,1]){rounded(side*flank-4,-11,8,20,3,"#788e70");circle(side*flank,0,4,"#dfaa57");}
+      ctx.strokeStyle="#ffd078";ctx.lineWidth=3;
+      ctx.beginPath();ctx.arc(0,-size*.30,8,ambientTime*16,ambientTime*16+Math.PI*1.6);ctx.stroke();
+    }else if(t.branch==="rail"){
+      for(const side of [-1,1]){rounded(side*flank-5,-29,10,36,3,"#245b81");line(side*flank,-32,side*flank,-3,"#89e9ff",3);}
+      circle(0,-size*.34,6+Math.sin(ambientTime*12)*2,"#b5f8ff");
+    }else if(t.branch==="tesla"){
+      for(const side of [-1,1]){rounded(side*flank-6,-20,12,30,4,"#63568e");for(let j=0;j<4;j++)line(side*flank-6,-18+j*8,side*flank+6,-18+j*8,"#d4b6ff",2);circle(side*flank,-25,5,"#e2c2ff");}
+      line(-flank,-25,0,-34,"#f2deff",2);line(0,-34,flank,-25,"#f2deff",2);
+    }else if(t.branch==="cluster"||t.branch==="incendiary"){
+      const hot=t.branch==="incendiary";
+      for(const side of [-1,1]){
+        rounded(side*flank-7,-20,14,30,4,hot?"#913f27":"#ad8954");
+        for(let j=0;j<3;j++)circle(side*flank,-15+j*8,3,hot?"#ff864a":"#ffe3a0");
+      }
+    }else if(t.branch==="bunker"){
+      rounded(-9,-size*.53,18,27,4,"#a9a187");
+      polygon([[-9,-size*.48],[0,-size*.65],[9,-size*.48]],"#ffb56c");
+      for(const side of [-1,1])rounded(side*flank-5,-15,10,23,3,"#c8a572");
+    }else if(t.branch==="swarm"){
+      for(const side of [-1,1])for(let j=0;j<3;j++){
+        const x=side*flank,y=-23+j*12;
+        rounded(x-5,y-4,10,13,3,"#926b50");
+        polygon([[x-4,y],[x,y-9],[x+4,y]],"#ffdc87");
+      }
+    }else if(t.branch==="skywall"||t.branch==="shrapnel"){
+      for(const side of [-1,1]){
+        rounded(side*flank-5,-32,10,37,3,"#408ba6");
+        line(side*flank,-40,side*flank,-7,"#c7faff",3);
+        circle(side*flank,-40,t.branch==="skywall"?6:3,"#a7ecff");
+      }
+    }else if(t.branch==="empfield"||t.branch==="targetlock"){
+      ctx.strokeStyle=t.branch==="empfield"?"#bcaaff":"#92f4ff";ctx.lineWidth=3;
+      ctx.beginPath();ctx.arc(0,0,flank,ambientTime*1.8,ambientTime*1.8+Math.PI*1.4);ctx.stroke();
+      for(const side of [-1,1])circle(side*flank,-12,4,glow);
+    }
+    if(t.awakened){
+      ctx.strokeStyle="#ffe49a";ctx.lineWidth=3;
+      ctx.beginPath();ctx.arc(0,0,size*.54,ambientTime*.6,ambientTime*.6+Math.PI*1.7);ctx.stroke();
+      for(let n=0;n<4;n++){const a=ambientTime*.8+n*Math.PI/2;circle(Math.cos(a)*size*.54,Math.sin(a)*size*.54,3,"#fff7bd");}
+    }
+    ctx.restore();
+  }
   function drawTower(t) {
     const color=t.type==="radar"?"#5ed9e5":t.type==="flak"?"#88e7ff":t.type==="missile"?"#f3bd75":t.type==="cannon"?"#f2c77a":"#9fe1c1";
     ctx.save();ctx.translate(t.x,t.y);
     const sprite=turretArt[t.type];
-    const painted=!!(sprite?.complete&&sprite.naturalWidth&&(!t.branch||(t.type==="machinegun"&&t.branch==="gatling")));
+    const painted=!!(sprite?.complete&&sprite.naturalWidth);
     if(painted){
       ctx.save();
       ctx.shadowColor="#06131bd9";ctx.shadowBlur=11;ctx.shadowOffsetY=5;
@@ -1514,6 +1593,7 @@
       ctx.translate(0,t.recoil*4);
       const size=t.awakened?69:t.branch?65:59;
       ctx.drawImage(sprite,-size/2,-size/2,size,size);
+      drawWeaponEvolution(t,size);
       ctx.shadowBlur=0;ctx.shadowOffsetY=0;
       if(t.glow>0){
         circle(0,-size*.38,7+t.glow*24,"#ffdc80");
@@ -1802,13 +1882,16 @@
 
     bullets.forEach(b=>{
       const dx=b.x-b.px,dy=b.y-b.py,m=Math.hypot(dx,dy)||1;
-      const len=b.type==="missile"?26:b.type==="cannon"?15:b.type==="flak"?19:12;
+      const len=b.type==="missile"?(b.source.branch==="bunker"?40:26):b.type==="cannon"?15:b.type==="flak"?19:12;
       const tx=b.x-dx/m*len,ty=b.y-dy/m*len;
       ctx.strokeStyle=b.type==="missile"?"#ff7b46":b.type==="cannon"?"#ffe49e":b.type==="flak"?"#60e7ff":"#f6f5d8";
-      ctx.lineWidth=b.type==="missile"?5:b.type==="cannon"?3:b.type==="flak"?3:2;
+      ctx.lineWidth=b.type==="missile"?(b.source.branch==="bunker"?9:5):b.type==="cannon"?3:b.type==="flak"?3:2;
       line(tx,ty,b.x,b.y,ctx.strokeStyle,ctx.lineWidth);
       circle(b.x,b.y,b.type==="missile"?5:3,b.type==="flak"?"#e8ffff":"#fff6ce");
-      if(b.type==="missile"){circle(tx,ty,8,"#ff913b44");circle(tx+2,ty+2,4,"#ffb53f");}
+      if(b.type==="missile"){
+        circle(tx,ty,b.source.awakened?12:8,"#ff913b44");circle(tx+2,ty+2,4,"#ffb53f");
+        if(b.source.branch==="swarm")line(tx-dy/m*5,ty+dx/m*5,b.x,b.y,"#ffe79f",1.8);
+      }
       if(b.type==="flak"){circle(tx,ty,6,"#69e9ff48");}
     });
 
@@ -1904,7 +1987,7 @@
     });
     const current=towerAt(selectedPad);
     const evo=current&&current.branch;
-    $("awakening-count").textContent=(state.awakenings||0)+" / 3";
+    $("awakening-count").textContent=(state.awakenings||0)+" 機覚醒";
     $("awakening-clue").textContent=evo?
       (current.awakened?"覚醒済： "+current.evolution:
       current.type!=="machinegun"?"★ "+(current.evolution||"専用兵器"):
