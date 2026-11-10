@@ -28,7 +28,7 @@ function createHarness(seed=1){
   let rand=seed;
   const randomness=()=>{rand=(rand*1664525+1013904223)>>>0;return rand/4294967296};
   const MathSeeded=Object.create(Math);MathSeeded.random=randomness;
-  const hooked=source.replace('  reset();\n  requestAnimationFrame(frame);',`  globalThis.__test={get state(){return state},get towers(){return towers},get enemies(){return enemies},get commander(){return commander},selectStage,selectPad,startWave,update,openEvolution,getDef:()=>DEF,findTarget,upgradeTower,waveProfile,waveKinds};\n  reset();`);
+  const hooked=source.replace('  reset();\n  requestAnimationFrame(frame);',`  globalThis.__test={get state(){return state},get towers(){return towers},get enemies(){return enemies},get commander(){return commander},get paths(){return ROUTES},get pads(){return PADS},selectStage,selectPad,startWave,update,openEvolution,getDef:()=>DEF,findTarget,upgradeTower,waveProfile,waveKinds,specializeWeapon,applyMod,checkEvolution};\n  reset();`);
   const context={document:doc,window:{},localStorage:{getItem:()=>null,setItem(){}},requestAnimationFrame(){},Math:MathSeeded,console};
   vm.runInNewContext(hooked,context,{filename:'script.js'});
   return {game:context.__test, get};
@@ -103,6 +103,7 @@ for(const style of ['guided','only_machinegun']){
       const waves=run({style,seed});
       assert.equal(waves[0].hp,20,'First wave should be welcoming');
       if(style==='guided'){
+        if(waves.some(w=>w.hp<=0))console.log('FAILED_GUIDED',seed,JSON.stringify(waves.filter(w=>w.wave%2===0).map(w=>({w:w.wave,hp:w.hp,m:w.money,t:w.towers}))));
         assert.equal(waves.at(-1).wave,40,'All four maps should be completable');
         assert.ok(waves.every(w=>w.hp>0),'Balanced mixed-arms build should finish without repairs');
       }else{
@@ -114,3 +115,38 @@ for(const style of ['guided','only_machinegun']){
     catch(e){console.error(style,seed,e.stack);process.exitCode=1}
   }
 }
+
+// Every new non-machinegun awakening must be achievable with two selected perks.
+for(const [type,branch,mods] of [
+  ['cannon','cluster',['blast','power']],
+  ['cannon','incendiary',['blast','rapid']],
+  ['missile','bunker',['pierce','power']],
+  ['missile','swarm',['rapid','blast']]
+]){
+  const {game,get}=createHarness(18);
+  game.commander.stages=2;
+  game.selectStage(1);
+  const card=get('tower-grid').children.find(c=>c.dataset.tower===type);
+  card.onclick();game.selectPad(2);
+  const weapon=game.towers[0];
+  assert.ok(weapon,`Placed ${type}`);
+  game.specializeWeapon(weapon,{id:branch,name:branch,color:'#ffd174'});
+  for(const id of mods){game.applyMod(weapon,{id});game.checkEvolution(weapon);}
+  assert.equal(weapon.awakened,true,`${type}/${branch} awakens`);
+  assert.equal(game.state.awakenings,1,'Awakening counted once');
+}
+console.log('All four new awakening recipes passed');
+
+// A defensive pad must never physically overlap the enemy road.
+for(let stage=0;stage<4;stage++){
+  const {game}=createHarness(1);game.commander.stages=4;game.selectStage(stage);
+  for(const [i,[x,y]] of game.pads.entries()){
+    const min=Math.min(...game.paths.flatMap(path=>path.slice(1).map(([bx,by],j)=>{
+      const [ax,ay]=path[j],dx=bx-ax,dy=by-ay;
+      const u=Math.max(0,Math.min(1,((x-ax)*dx+(y-ay)*dy)/(dx*dx+dy*dy)));
+      return Math.hypot(x-ax-u*dx,y-ay-u*dy);
+    })));
+    assert.ok(min>=37,`Stage ${stage+1} pad ${i+1} overlaps road (${min.toFixed(0)} px)`);
+  }
+}
+console.log('All four enlarged maps have clear build pads');
