@@ -347,6 +347,11 @@ body{position:fixed;inset:0}
 .game-header{flex:0 0 auto}
 .battle-area{flex:1 1 auto;height:auto!important;min-height:0!important;overflow:hidden}
 #game-canvas{display:block;width:100%;height:100%}
+.map-scroll-controls{position:absolute;right:7px;top:35%;display:flex;flex-direction:column;align-items:center;gap:5px;z-index:5;pointer-events:auto}
+.map-scroll-controls button{width:34px;height:34px;border:1px solid #89d9c8b0;border-radius:9px;background:#0c3039e8;color:#d0ffe9;font-size:17px;font-weight:900;box-shadow:0 2px 9px #0009;touch-action:manipulation}
+.map-scroll-controls button:disabled{opacity:.4}
+.map-scroll-track{width:8px;height:83px;border:1px solid #8ac8b585;border-radius:10px;background:#071d27d6;position:relative}
+#map-scroll-thumb{position:absolute;left:0;width:6px;height:54px;border-radius:8px;background:#91f3ca;box-shadow:0 0 8px #73efcb9a}
 .control-panel{display:none!important}
 .mobile-command-dock{position:relative;left:auto;bottom:auto;transform:none;flex:0 0 auto;width:100%;max-width:none;box-sizing:border-box;box-shadow:0 -5px 18px #0009}
 .mobile-command-dock .tower-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
