@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0c161c">
   <title>IRONLINE — 戦場と兵器</title>
-  <link rel="stylesheet" href="./style.css?v=3.4.0">
+  <link rel="stylesheet" href="./style.css?v=3.5.0">
 </head>
 <body>
 <div id="ironline" class="game-shell">
@@ -13,7 +13,7 @@
     <div class="brand">
       <span class="brand-mark">◆</span>
       <span>IRONLINE</span>
-      <span class="version">ALPHA 3.4.0</span>
+      <span class="version">ALPHA 3.5.0</span>
       <span class="stage-caption" id="stage-caption">⛰ 渓谷防衛線</span>
     </div>
 
@@ -49,6 +49,11 @@
 
   <main class="battle-area">
     <canvas id="game-canvas" width="390" height="520"></canvas>
+    <div class="map-scroll-controls" aria-label="戦場の移動">
+      <button id="map-up" type="button" aria-label="上の戦場を見る">▲</button>
+      <div class="map-scroll-track"><div id="map-scroll-thumb"></div></div>
+      <button id="map-down" type="button" aria-label="下の戦場を見る">▼</button>
+    </div>
 
     <div class="battle-topbar">
       <div id="battle-message">まずは兵器を置こう！</div>
@@ -196,7 +201,7 @@
 </div>
 
 
-<script src="./script.js?v=3.4.0" defer></script>
+<script src="./script.js?v=3.5.0" defer></script>
 </body>
 </html>
 
