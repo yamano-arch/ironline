@@ -5,7 +5,8 @@
   const $ = id => document.getElementById(id);
   const canvas = $("game-canvas");
   const ctx = canvas.getContext("2d");
-  const W = 390, H = 520;
+  const W = 390, H = 760, VIEW_H = 520;
+  let cameraY=0,panStartY=0,panStartCamera=0,isPanning=false;
   // Production-painted turret portraits double as battlefield sprites.
   // Canvas fallback remains for evolved branches with unique silhouettes.
   const turretArt = Object.fromEntries(["machinegun","cannon","flak","missile","radar"].map(type=>{
@@ -43,6 +44,7 @@
     [-35,110],[75,110],[75,210],[165,210],
     [165,330],[300,330],[300,160],[425,160]
   ];
+  let ROUTES=[PATH];
 
   let PADS = [
     [28,65],[128,75],[129,153],[30,270],
@@ -56,9 +58,15 @@
   const WAVES_PER_STAGE=10;
   const STAGES=[
     {name:"渓谷防衛線",icon:"⛰",theme:"canyon",start:0,brief:"曲がり角で敵を迎え撃て",path:[[-35,110],[75,110],[75,210],[165,210],[165,330],[300,330],[300,160],[425,160]],pads:[[28,65],[128,75],[129,153],[30,270],[220,163],[215,260],[245,385],[342,255],[92,290],[185,390],[320,73],[352,315]]},
-    {name:"砂漠の関門",icon:"☀",theme:"desert",start:10,brief:"高速車両を止めろ",path:[[-35,365],[100,365],[100,150],[240,150],[240,295],[425,295]],pads:[[35,325],[67,250],[125,300],[159,190],[198,100],[292,200],[302,340],[350,240],[65,80],[195,390],[342,110],[340,420]]},
-    {name:"雪嶺の前哨地",icon:"❄",theme:"snow",start:20,brief:"飛来するドローンを撃て",path:[[-35,165],[110,165],[110,335],[265,335],[265,115],[425,115]],pads:[[45,85],[160,105],[70,260],[175,250],[220,165],[320,210],[200,415],[323,365],[44,390],[180,55],[340,62],[350,470]]},
-    {name:"鉄鋼要塞",icon:"⚙",theme:"factory",start:30,brief:"重装甲部隊を撃破せよ",path:[[-35,110],[105,110],[105,250],[300,250],[300,385],[165,385],[165,465],[425,465]],pads:[[38,58],[170,80],[50,185],[180,195],[345,180],[348,310],[255,340],[110,340],[50,400],[230,430],[348,416],[350,65]]}
+    {name:"砂漠の関門",icon:"☀",theme:"desert",start:10,brief:"高速車両を止めろ",path:[[-35,365],[100,365],[100,150],[240,150],[240,295],[425,295]],pads:[[35,325],[48,250],[160,300],[159,190],[198,100],[292,200],[302,340],[350,240],[65,80],[195,390],[342,110],[340,420]]},
+    {name:"雪嶺の前哨地",icon:"❄",theme:"snow",start:20,brief:"二方向の敵を迎撃せよ",path:[[-35,165],[110,165],[110,335],[265,335],[265,115],[425,115]],routes:[
+      [[-35,165],[110,165],[110,335],[265,335],[265,115],[425,115]],
+      [[-35,165],[110,165],[110,335],[110,455],[320,455],[320,115],[425,115]]
+    ],pads:[[45,85],[160,105],[70,260],[175,250],[220,165],[365,210],[190,395],[367,365],[44,390],[180,55],[340,62],[350,490]]},
+    {name:"鉄鋼要塞",icon:"⚙",theme:"factory",start:30,brief:"左右から来る重戦車を止めろ",path:[[-35,110],[105,110],[105,250],[300,250],[300,385],[165,385],[165,465],[425,465]],routes:[
+      [[-35,110],[105,110],[105,250],[300,250],[300,385],[165,385],[165,465],[425,465]],
+      [[-35,110],[105,110],[105,250],[105,450],[310,450],[310,465],[425,465]]
+    ],pads:[[38,58],[170,80],[50,185],[180,195],[345,180],[348,310],[255,340],[55,340],[45,402],[230,420],[348,416],[350,65]]}
   ];
   let stageIndex=0;
   const stageEnd=()=>STAGES[stageIndex].start+WAVES_PER_STAGE;
@@ -77,8 +85,8 @@
     const [x,y]=PADS[i],trait=PAD_TRAITS[i];
     const range=DEF[type].range*state.globalRange*(trait==="high"?1.30:trait==="guard"?.95:1);
     let total=0,covered=0;
-    for(let s=0;s<PATH.length-1;s++){
-      const a=PATH[s],b=PATH[s+1],len=Math.hypot(b[0]-a[0],b[1]-a[1]);
+    for(const path of ROUTES)for(let s=0;s<path.length-1;s++){
+      const a=path[s],b=path[s+1],len=Math.hypot(b[0]-a[0],b[1]-a[1]);
       total+=len;
       for(let k=0;k<32;k++){
         const f=(k+.5)/32;
@@ -208,8 +216,11 @@
   ];
 
   function reset() {
-    PATH=STAGES[stageIndex].path;
-    PADS=STAGES[stageIndex].pads;
+    const sy=1.43;
+    ROUTES=(STAGES[stageIndex].routes||[STAGES[stageIndex].path]).map(route=>route.map(([x,y])=>[x,y*sy]));
+    PATH=ROUTES[0];
+    PADS=STAGES[stageIndex].pads.map(([x,y])=>[x,y*sy]);
+    cameraY=0;
     state = {
       hp:20, maxHp:20, money:350+stageIndex*500, wave:STAGES[stageIndex].start, active:false,
       waveLeaks:{},lastWaveReport:"",suggestedTower:"machinegun",
@@ -375,7 +386,8 @@
       stageIndex===1&&local%3!==0?"car":stageIndex===2&&(local>=7||local%3!==0)?"drone":
       stageIndex===3&&local%3!==0?"tank":
       [3,6,9].includes(local)?"car":[4,8].includes(local)?"tank":local===7?"drone":"infantry";
-    const unitCount=7+Math.floor(local*1.75)+stageIndex;
+    // Finale is a boss encounter, not a wall of 25+ giant tanks.
+    const unitCount=7+Math.floor(local*1.75)+stageIndex-(stageIndex===3&&local>=8?(local===10?12:5):0);
     const rush=focus==="car",swarm=focus==="infantry",tank=focus==="tank",drone=focus==="drone";
     return {local,focus,unitCount,tank,drone,rush,swarm,boss:local===10,
       label:focus==="boss"?"⚠ ボス接近":focus==="car"?"🚗 高速車両":
@@ -517,17 +529,20 @@
     // An independent enemy RNG keeps difficulty stable regardless of particles and sound.
     state.enemySeed=(Math.imul(state.enemySeed,1664525)+1013904223)>>>0;
     const elite=kind!=="boss" && w>=5 && state.enemySeed/4294967296<Math.min(.25,.045+w*.015);
+    const routeIndex=ROUTES.length===1?0:state.spawnedThisWave%ROUTES.length;
+    const path=ROUTES[routeIndex];
     return {
       id:nextEnemyId++, kind,
-      x:PATH[0][0], y:PATH[0][1],
+      x:path[0][0], y:path[0][1], path,routeIndex,
       segment:0, hp:d.hp*scale*(elite?1.65:1), maxHp:d.hp*scale*(elite?1.65:1),
-      speed:d.speed*(1+Math.min(.25,w*.015))*(elite?1.10:1)*(doctrine==="salvage"?1.12:1)*(stageIndex===2&&kind==="drone"?.83:1), armor:d.armor, reward:d.reward*(elite?3:1), elite,
+      speed:d.speed*(1+Math.min(.25,w*.015))*(elite?1.10:1)*(doctrine==="salvage"?1.12:1)*(stageIndex===2&&kind==="drone"?.83:1)*(stageIndex>=2?1.13:1.07), armor:d.armor, reward:d.reward*(elite?3:1), elite,
       damage:kind==="tank"&&stageIndex===0?1:d.damage, color:d.color,
       slowTime:0, alive:true, angle:0
     };
   }
 
   function moveEnemy(e, dt) {
+    const path=e.path||PATH;
     const slowFactor = e.slowTime > 0 ? (e.empTime>0?.34:.55) : 1;
     e.slowTime = Math.max(0,e.slowTime-dt);
     e.empTime=Math.max(0,(e.empTime||0)-dt);
@@ -540,8 +555,8 @@
     }
     let travel = e.speed * slowFactor * dt;
 
-    while (travel > 0 && e.segment < PATH.length-1) {
-      const target = PATH[e.segment+1];
+    while (travel > 0 && e.segment < path.length-1) {
+      const target = path[e.segment+1];
       const dx = target[0]-e.x, dy=target[1]-e.y;
       const left = Math.hypot(dx,dy);
 
@@ -582,12 +597,12 @@
         combatTexts.push({x:e.x,y:e.y-22,text:"ROCKET -95",life:.75,color:"#ffd17c"});
       }
     }
-    if (e.segment >= PATH.length-1) {
+    if (e.segment >= path.length-1) {
       e.alive=false;
       state.hp -= e.damage;
       state.waveLeaks[e.kind]=(state.waveLeaks[e.kind]||0)+1;
-      strikeRings.push({x:360,y:140,radius:8,life:.55});
-      combatTexts.push({x:345,y:105,text:"基地 -"+e.damage,life:1.1,color:"#ff8176"});
+      strikeRings.push({x:360,y:PATH.at(-1)[1],radius:8,life:.55});
+      combatTexts.push({x:345,y:PATH.at(-1)[1]-35,text:"基地 -"+e.damage,life:1.1,color:"#ff8176"});
       burst(e.x,e.y,"#ff7373",13);
     }
   }
@@ -893,7 +908,7 @@
       if(crowded[0]?.n>=3)return crowded[0].e;
     }
     available.sort((a,b)=>{
-      const progress=e=>{if(e.segment>=PATH.length-1)return PATH.length;const to=PATH[e.segment+1],from=PATH[e.segment];const total=Math.hypot(to[0]-from[0],to[1]-from[1])||1;return e.segment+Math.max(0,1-Math.hypot(e.x-to[0],e.y-to[1])/total)};
+      const progress=e=>{const path=e.path||PATH;if(e.segment>=path.length-1)return 1;const to=path[e.segment+1],from=path[e.segment];const total=Math.hypot(to[0]-from[0],to[1]-from[1])||1;return (e.segment+Math.max(0,1-Math.hypot(e.x-to[0],e.y-to[1])/total))/(path.length-1)};
       return progress(b)-progress(a);
     });
     return available[0];
@@ -1267,7 +1282,7 @@
     // Industrial debris, not round toy trees.
     for(let i=0;i<22;i++){
       const x=(i*117+47)%W,y=(i*73+33)%H;
-      if(PATH.some(p=>Math.hypot(p[0]-x,p[1]-y)<31))continue;
+      if(ROUTES.some(path=>path.some(p=>Math.hypot(p[0]-x,p[1]-y)<31)))continue;
       const r=6+i%6;
       polygon([[x-r,y+r],[x-r*.7,y-r*.8],[x+r*.7,y-r],[x+r,y+r*.6]],"#213d37","#56715b",1.4);
       polygon([[x-r*.7,y-r*.8],[x,y-r*1.2],[x+r*.7,y-r],[x+2,y]],"#6f886c");
@@ -1406,8 +1421,8 @@
   function drawRoadMarkings(theme){
     // Material details follow each piece of the path, making every map tangible.
     ctx.save();
-    for(let k=0;k<PATH.length-1;k++){
-      const [x1,y1]=PATH[k], [x2,y2]=PATH[k+1];
+    for(const path of ROUTES)for(let k=0;k<path.length-1;k++){
+      const [x1,y1]=path[k], [x2,y2]=path[k+1];
       const dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy)||1;
       for(let d=23;d<len-9;d+=theme==="factory"?28:42){
         const x=x1+dx*d/len,y=y1+dy*d/len;
@@ -1442,16 +1457,19 @@
     for(let x=0;x<=W;x+=32)line(x,0,x,H,"#d9f2db10");
     for(let y=0;y<=H;y+=32)line(0,y,W,y,"#d9f2db10");
     if(theme==="canyon")terrainTexture();
-    drawWorld(theme);
+    ctx.save();ctx.scale(1,H/520);drawWorld(theme);ctx.restore();
     ctx.lineCap="round";ctx.lineJoin="round";
-    ctx.beginPath();
-    PATH.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));
-    ctx.strokeStyle=theme==="factory"?"#101b25":"#142e2edb";ctx.lineWidth=67;ctx.stroke();
-    ctx.strokeStyle=theme==="snow"?"#cce8e9":theme==="desert"?"#94744d":theme==="factory"?"#d49d47":"#647d63";ctx.lineWidth=61;ctx.stroke();
-    ctx.strokeStyle=theme==="snow"?"#72939f":theme==="desert"?"#9d805b":theme==="factory"?"#44535e":"#77694f";ctx.lineWidth=51;ctx.stroke();
-    ctx.strokeStyle=theme==="snow"?"#a6c5cc":theme==="factory"?"#6e7f89":theme==="desert"?"#c2a372":"#b7a47c";ctx.lineWidth=44;ctx.stroke();
-    ctx.strokeStyle=theme==="snow"?"#b9d4d9":theme==="factory"?"#87949c":theme==="desert"?"#e0bc82":"#c9ba95";ctx.lineWidth=36;ctx.stroke();
-    ctx.strokeStyle=theme==="factory"?"#ffbd5988":theme==="snow"?"#f0ffffac":"#f8e3a164";ctx.lineWidth=1.6;ctx.setLineDash([10,12]);ctx.stroke();ctx.setLineDash([]);
+    for(let pathNo=0;pathNo<ROUTES.length;pathNo++){
+      ctx.beginPath();
+      ROUTES[pathNo].forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));
+      ctx.strokeStyle=theme==="factory"?"#101b25":"#142e2edb";ctx.lineWidth=67;ctx.stroke();
+      ctx.strokeStyle=theme==="snow"?"#cce8e9":theme==="desert"?"#94744d":theme==="factory"?"#d49d47":"#647d63";ctx.lineWidth=61;ctx.stroke();
+      ctx.strokeStyle=theme==="snow"?"#72939f":theme==="desert"?"#9d805b":theme==="factory"?"#44535e":"#77694f";ctx.lineWidth=51;ctx.stroke();
+      ctx.strokeStyle=theme==="snow"?"#a6c5cc":theme==="factory"?"#6e7f89":theme==="desert"?"#c2a372":"#b7a47c";ctx.lineWidth=44;ctx.stroke();
+      ctx.strokeStyle=theme==="snow"?"#b9d4d9":theme==="factory"?"#87949c":theme==="desert"?"#e0bc82":"#c9ba95";ctx.lineWidth=36;ctx.stroke();
+      ctx.strokeStyle=pathNo?"#8bece9b0":theme==="factory"?"#ffbd5988":theme==="snow"?"#f0ffffac":"#f8e3a164";
+      ctx.lineWidth=pathNo?2.7:1.6;ctx.setLineDash(pathNo?[5,9]:[10,12]);ctx.stroke();ctx.setLineDash([]);
+    }
     drawRoadMarkings(theme);
     // Danger line across the entry point.
     ctx.save();ctx.translate(14,PATH[0][1]);ctx.rotate(-Math.PI/2);
@@ -1859,8 +1877,9 @@
     ctx.restore();
   }
   function draw() {
-    ctx.clearRect(0,0,W,H);
-    ctx.save();if(kick>0)ctx.translate((Math.random()-.5)*kick*2,(Math.random()-.5)*kick*2);
+    ctx.clearRect(0,0,W,VIEW_H);
+    ctx.save();ctx.translate(0,-cameraY);
+    if(kick>0)ctx.translate((Math.random()-.5)*kick*2,(Math.random()-.5)*kick*2);
     drawTerrain();
     drawPadPreview();
     drawPads();
@@ -1964,6 +1983,11 @@
       ctx.strokeStyle="#102529";ctx.lineWidth=5;ctx.strokeText(combo+" COMBO",W/2,44);
       ctx.fillStyle=combo>=20?"#ffd45b":"#b9fff0";ctx.fillText(combo+" COMBO",W/2,44);ctx.restore();}
     ctx.restore();
+    const thumb=$("map-scroll-thumb");
+    if(thumb)thumb.style.top=Math.round(cameraY/(H-VIEW_H)*29)+"px";
+    const up=$("map-up"),down=$("map-down");
+    if(up)up.disabled=cameraY<2;
+    if(down)down.disabled=cameraY>=H-VIEW_H-2;
   }
 
   function updateUI() {
@@ -2110,7 +2134,7 @@
   const padFromPointer=event=>{
     const rect=canvas.getBoundingClientRect();
     const x=(event.clientX-rect.left)*W/rect.width;
-    const y=(event.clientY-rect.top)*H/rect.height;
+    const y=(event.clientY-rect.top)*VIEW_H/rect.height+cameraY;
     let index=-1,nearest=25;
     PADS.forEach((p,i)=>{
       const d=Math.hypot(p[0]-x,p[1]-y);
@@ -2119,6 +2143,13 @@
     return {index,x,y};
   };
   canvas.addEventListener("pointermove",event=>{
+    if(event.pointerType==="touch"&&pressedPad>=-1&&panStartY){
+      const delta=(event.clientY-panStartY)*VIEW_H/canvas.getBoundingClientRect().height;
+      if(Math.abs(delta)>12||isPanning){
+        isPanning=true;cameraY=Math.max(0,Math.min(H-VIEW_H,panStartCamera-delta));
+        hoverPad=-1;return;
+      }
+    }
     if(event.pointerType==="touch"&&pressedPad<0)return;
     const {index}=padFromPointer(event);
     if(hoverPad!==index){hoverPad=index;updateUI();}
@@ -2128,16 +2159,19 @@
   });
   canvas.addEventListener("pointerdown",event=>{
     event.preventDefault();
+    panStartY=event.clientY;panStartCamera=cameraY;isPanning=false;
     const {index}=padFromPointer(event);
     pressedPad=index;hoverPad=index;
     updateUI();
   });
-  canvas.addEventListener("pointercancel",()=>{pressedPad=-1;hoverPad=-1;updateUI();});
+  canvas.addEventListener("pointercancel",()=>{pressedPad=-1;hoverPad=-1;panStartY=0;isPanning=false;updateUI();});
   canvas.addEventListener("pointerup",event=>{
     const {index,x,y}=padFromPointer(event);
     const chosen=pressedPad;
     pressedPad=-1;
+    panStartY=0;
     hoverPad=event.pointerType==="mouse"?index:-1;
+    if(isPanning){isPanning=false;updateUI();return;}
     if(strikeAiming) {
       if(state.strike>=100 && state.active && !state.paused)useAirstrike(x,y);
       else{strikeAiming=false;$("strike-hint").classList.add("hidden");}
@@ -2147,6 +2181,11 @@
     if(chosen>=0&&chosen===index)selectPad(index);
     else updateUI();
   });
+  canvas.addEventListener("wheel",event=>{
+    event.preventDefault();cameraY=Math.max(0,Math.min(H-VIEW_H,cameraY+event.deltaY*.70));
+  },{passive:false});
+  $("map-up")?.addEventListener("click",()=>{cameraY=Math.max(0,cameraY-VIEW_H*.65);});
+  $("map-down")?.addEventListener("click",()=>{cameraY=Math.min(H-VIEW_H,cameraY+VIEW_H*.65);});
 
   document.querySelectorAll(".tower-card").forEach(button=>{
     button.onclick=()=>{
